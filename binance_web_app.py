@@ -198,6 +198,57 @@ def get_income_history():
         logger.error(f"获取合约收益历史API错误: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/market/klines')
+def get_klines():
+    """
+    获取K线数据和BOLL指标API
+    """
+    try:
+        if not binance_client:
+            return jsonify({'error': '币安客户端未初始化'}), 500
+        
+        # 获取请求参数
+        symbol = request.args.get('symbol', 'BTCUSDT')
+        interval = request.args.get('interval', '15m')
+        limit = int(request.args.get('limit', 50))
+        
+        # 第一步：从币安API获取50根K线数据并存储到数据库
+        klines = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        
+        if not klines:
+            return jsonify({'error': '获取K线数据失败'}), 500
+        
+        # 第三步：计算BOLL指标(20,2)并存储到数据库
+        boll_data = binance_client.calculate_boll(klines, symbol, interval, period=20, std_dev=2)
+        
+        # 组合数据用于前端显示
+        chart_data = []
+        for i, kline in enumerate(klines):
+            chart_data.append({
+                'timestamp': kline['timestamp'],
+                'open': kline['open'],
+                'high': kline['high'],
+                'low': kline['low'],
+                'close': kline['close'],
+                'volume': kline['volume'],
+                'upper': boll_data['upper'][i] if i < len(boll_data['upper']) else None,
+                'middle': boll_data['middle'][i] if i < len(boll_data['middle']) else None,
+                'lower': boll_data['lower'][i] if i < len(boll_data['lower']) else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'klines': chart_data,
+                'boll': boll_data
+            },
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"获取K线数据API错误: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/all')
 def get_all_data():
     """
@@ -261,6 +312,7 @@ if __name__ == '__main__':
         print("  - 合约交易记录: /api/account/trades")
         print("  - 合约收益历史: /api/account/income")
         print("  - 合约市场行情: /api/market/tickers")
+        print("  - K线数据和BOLL指标: /api/market/klines")
         print("  - 所有数据: /api/account/all")
         print("  - API状态: /api/status")
         

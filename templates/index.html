@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>币安合约账户信息</title>
+    <!-- Plotly.js库 - 支持蜡烛图 -->
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -340,6 +342,32 @@
                 </div>
                 <div id="incomeHistory">
                     <div class="loading">正在加载收益历史...</div>
+                </div>
+            </div>
+
+            <!-- K线图 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">K线图 (BTCUSDT 15分钟)</div>
+                    <div class="card-controls">
+                        <select id="symbolSelect" style="margin-right: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
+                            <option value="BTCUSDT">BTCUSDT</option>
+                            <option value="ETHUSDT">ETHUSDT</option>
+                            <option value="BNBUSDT">BNBUSDT</option>
+                        </select>
+                        <select id="intervalSelect" style="margin-right: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
+                            <option value="15m">15分钟</option>
+                            <option value="1h">1小时</option>
+                            <option value="4h">4小时</option>
+                            <option value="1d">1天</option>
+                        </select>
+                        <button onclick="refreshKlineChart()" style="padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">刷新</button>
+                    </div>
+                </div>
+                <div id="klineChart" style="height: 500px; position: relative;">
+                    <div id="klinePlot" style="width: 100%; height: 100%;"></div>
+                    <div class="loading" id="klineLoading">正在加载K线数据...</div>
                 </div>
             </div>
 
@@ -755,6 +783,213 @@
             
             
         }
+
+        // K线图相关变量
+
+
+        /**
+         * 获取K线数据
+         */
+        async function fetchKlineData(symbol = 'BTCUSDT', interval = '15m', limit = 50) {
+            try {
+                const response = await fetch(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data.data;
+                } else {
+                    throw new Error(data.error || '获取K线数据失败');
+                }
+            } catch (error) {
+                console.error('获取K线数据错误:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * 创建K线图 - 使用Plotly.js绘制蜡烛图
+         */
+        function createKlineChart(klineData) {
+            // 检查Plotly.js是否可用
+            if (typeof Plotly === 'undefined') {
+                console.error('Plotly.js库未加载');
+                alert('图表库加载失败，请刷新页面重试');
+                return;
+            }
+            
+            // 准备蜡烛图数据
+            const candlestickData = {
+                x: klineData.klines.map(k => new Date(k.timestamp)),
+                open: klineData.klines.map(k => parseFloat(k.open)),
+                high: klineData.klines.map(k => parseFloat(k.high)),
+                low: klineData.klines.map(k => parseFloat(k.low)),
+                close: klineData.klines.map(k => parseFloat(k.close)),
+                type: 'candlestick',
+                name: 'K线',
+                increasing: {line: {color: '#00ff00'}},
+                decreasing: {line: {color: '#ff0000'}},
+                hovertemplate: '<b>时间</b>: %{x}<br>' +
+                              '<b>开盘价</b>: %{open:.2f}<br>' +
+                              '<b>最高价</b>: %{high:.2f}<br>' +
+                              '<b>最低价</b>: %{low:.2f}<br>' +
+                              '<b>收盘价</b>: %{close:.2f}<br>' +
+                              '<extra></extra>'
+            };
+
+            // 准备BOLL线数据 - 保持完整的时间序列
+            const traces = [candlestickData];
+            const timeAxis = klineData.klines.map(k => new Date(k.timestamp));
+            
+            // BOLL上轨 - 保持完整时间序列，null值会自动断开线条
+            if (klineData.boll.upper && klineData.boll.upper.length > 0) {
+                traces.push({
+                    x: timeAxis,
+                    y: klineData.boll.upper,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'BOLL上轨',
+                    line: {color: '#ff6b6b', width: 1.5},
+                    connectgaps: false,
+                    hovertemplate: '<b>BOLL上轨</b>: %{y:.2f}<br><extra></extra>'
+                });
+            }
+            
+            // BOLL中轨
+            if (klineData.boll.middle && klineData.boll.middle.length > 0) {
+                traces.push({
+                    x: timeAxis,
+                    y: klineData.boll.middle,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'BOLL中轨',
+                    line: {color: '#4ecdc4', width: 1.5},
+                    connectgaps: false,
+                    hovertemplate: '<b>BOLL中轨</b>: %{y:.2f}<br><extra></extra>'
+                });
+            }
+            
+            // BOLL下轨
+            if (klineData.boll.lower && klineData.boll.lower.length > 0) {
+                traces.push({
+                    x: timeAxis,
+                    y: klineData.boll.lower,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'BOLL下轨',
+                    line: {color: '#45b7d1', width: 1.5},
+                    connectgaps: false,
+                    hovertemplate: '<b>BOLL下轨</b>: %{y:.2f}<br><extra></extra>'
+                });
+            }
+
+            // 获取当前选择的交易对和时间间隔
+            const symbol = document.getElementById('symbolSelect').value;
+            const interval = document.getElementById('intervalSelect').value;
+            
+            // 图表布局配置
+            const layout = {
+                title: {
+                    text: `K线图 (${symbol} ${interval})`,
+                    font: {size: 18, color: '#333'}
+                },
+                xaxis: {
+                    title: '时间',
+                    type: 'date',
+                    rangeslider: {visible: false},
+                    showgrid: true,
+                    gridcolor: '#f0f0f0',
+                    tickformat: '%H:%M\n%m-%d'
+                },
+                yaxis: {
+                    title: '价格 (USDT)',
+                    side: 'left',
+                    showgrid: true,
+                    gridcolor: '#f0f0f0',
+                    tickformat: '.2f'
+                },
+                showlegend: true,
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(255,255,255,0.9)',
+                    bordercolor: '#ddd',
+                    borderwidth: 1,
+                    font: {size: 12}
+                },
+                margin: {l: 80, r: 30, t: 60, b: 60},
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                hovermode: 'x unified',
+                hoverlabel: {
+                    bgcolor: 'rgba(255,255,255,0.95)',
+                    bordercolor: '#333',
+                    font: {size: 12, color: '#333'}
+                }
+            };
+
+            // 绘制图表配置
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d', 'autoScale2d'],
+                displaylogo: false,
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: `${symbol}_${interval}_kline`,
+                    height: 600,
+                    width: 1000,
+                    scale: 1
+                }
+            };
+
+            // 绘制图表
+            Plotly.newPlot('klinePlot', traces, layout, config);
+        }
+
+        /**
+         * 刷新K线图
+         */
+        async function refreshKlineChart() {
+            const symbol = document.getElementById('symbolSelect').value;
+            const interval = document.getElementById('intervalSelect').value;
+            const loading = document.getElementById('klineLoading');
+            
+            try {
+                loading.style.display = 'block';
+                
+                // 获取50根K线数据
+                const klineData = await fetchKlineData(symbol, interval, 50);
+                createKlineChart(klineData);
+                
+                // 更新图表标题
+                const intervalText = {
+                    '15m': '15分钟',
+                    '1h': '1小时',
+                    '4h': '4小时',
+                    '1d': '1天'
+                };
+                
+                // 更新Plotly图表标题
+                const newTitle = `K线图 (${symbol} ${intervalText[interval]})`;
+                Plotly.relayout('klinePlot', {
+                    'title.text': newTitle
+                });
+                
+            } catch (error) {
+                console.error('刷新K线图错误:', error);
+                alert('刷新K线图失败: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // 页面加载完成后初始化K线图
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟2秒后初始化K线图，确保Plotly.js加载完成
+            setTimeout(() => {
+                refreshKlineChart();
+            }, 2000);
+        });
     </script>
 </body>
 </html>

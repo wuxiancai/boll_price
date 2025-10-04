@@ -8,6 +8,7 @@ from binance.exceptions import BinanceAPIException, BinanceOrderException
 import logging
 from datetime import datetime
 from binance_config import get_api_config, validate_api_config
+from database import KlineDatabase
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -17,21 +18,32 @@ class BinanceFuturesClient:
     """币安合约账户信息客户端"""
     
     def __init__(self):
-        """
-        初始化币安合约客户端
-        """
-        if not validate_api_config('futures'):
-            raise ValueError("合约API配置无效，请检查API密钥")
-        
-        config = get_api_config('futures')
-        self.client = Client(
-            api_key=config['api_key'],
-            api_secret=config['api_secret'],
-            requests_params={'timeout': config['timeout']}
-        )
-        
-        # 测试连接
-        self._test_connection()
+        """初始化币安合约客户端"""
+        try:
+            # 获取API配置
+            api_config = get_api_config()
+            
+            # 验证配置
+            if not validate_api_config(api_config):
+                raise ValueError("API配置验证失败")
+            
+            # 初始化客户端
+            self.client = Client(
+                api_key=api_config['api_key'],
+                api_secret=api_config['api_secret'],
+                testnet=api_config.get('testnet', False)
+            )
+            
+            # 初始化数据库
+            self.db = KlineDatabase()
+            
+            # 测试连接
+            self._test_connection()
+            logger.info("币安合约API连接成功")
+            
+        except Exception as e:
+            logger.error(f"初始化币安合约客户端失败: {e}")
+            raise
     
     def _test_connection(self):
         """
@@ -308,4 +320,182 @@ class BinanceFuturesClient:
             }
         except Exception as e:
             logger.error(f"获取所有合约数据失败: {e}")
+            return None
+    
+    def get_klines(self, symbol, interval, limit=50):
+        """
+        获取K线数据并存储到数据库
+        
+        Args:
+            symbol: 交易对符号，如 'BTCUSDT'
+            interval: K线间隔，如 '1m', '5m', '15m', '1h', '4h', '1d'
+            limit: 获取的K线数量，默认50
+            
+        Returns:
+            list: K线数据列表，每个元素包含 [时间戳, 开盘价, 最高价, 最低价, 收盘价, 成交量, ...]
+        """
+        try:
+            # 获取K线数据
+            klines = self.client.futures_klines(
+                symbol=symbol,
+                interval=interval,
+                limit=limit
+            )
+            
+            # 格式化数据并存储到数据库
+            formatted_klines = []
+            for kline in klines:
+                formatted_kline = {
+                    'timestamp': int(kline[0]),
+                    'open': float(kline[1]),
+                    'high': float(kline[2]),
+                    'low': float(kline[3]),
+                    'close': float(kline[4]),
+                    'volume': float(kline[5]),
+                    'close_time': int(kline[6]),
+                    'quote_volume': float(kline[7]),
+                    'count': int(kline[8]),
+                    'taker_buy_volume': float(kline[9]),
+                    'taker_buy_quote_volume': float(kline[10])
+                }
+                formatted_klines.append(formatted_kline)
+                
+                # 存储到数据库
+                self.db.save_kline_data(
+                    symbol=symbol,
+                    interval=interval,
+                    timestamp=formatted_kline['timestamp'],
+                    open_price=formatted_kline['open'],
+                    high_price=formatted_kline['high'],
+                    low_price=formatted_kline['low'],
+                    close_price=formatted_kline['close'],
+                    volume=formatted_kline['volume']
+                )
+            
+            logger.info(f"成功获取并存储 {symbol} {interval} K线数据，共 {len(formatted_klines)} 条")
+            return formatted_klines
+            
+        except BinanceAPIException as e:
+            logger.error(f"获取K线数据失败 - API错误: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"获取K线数据失败: {e}")
+            raise
+    
+    def get_klines_from_db(self, symbol, interval, limit=50):
+        """
+        从数据库获取K线数据
+        
+        Args:
+            symbol: 交易对符号
+            interval: K线间隔
+            limit: 获取数量
+            
+        Returns:
+            list: K线数据列表
+        """
+        try:
+            klines = self.db.get_kline_data(symbol, interval, limit)
+            logger.info(f"从数据库获取 {symbol} {interval} K线数据，共 {len(klines)} 条")
+            return klines
+        except Exception as e:
+            logger.error(f"从数据库获取K线数据失败: {e}")
+            return []
+    
+    def calculate_boll(self, klines, symbol, interval, period=20, std_dev=2):
+        """
+        计算BOLL指标并存储到数据库
+        
+        Args:
+            klines (list): K线数据
+            symbol (str): 交易对符号
+            interval (str): K线间隔
+            period (int): 周期，默认20
+            std_dev (float): 标准差倍数，默认2
+            
+        Returns:
+            dict: 包含BOLL指标的数据
+        """
+        try:
+            if len(klines) < period:
+                return {'upper': [], 'middle': [], 'lower': []}
+            
+            closes = [kline['close'] for kline in klines]
+            
+            upper_band = []
+            middle_band = []
+            lower_band = []
+            
+            for i in range(len(closes)):
+                if i < period - 1:
+                    upper_band.append(None)
+                    middle_band.append(None)
+                    lower_band.append(None)
+                else:
+                    # 计算移动平均线
+                    period_closes = closes[i - period + 1:i + 1]
+                    sma = sum(period_closes) / period
+                    
+                    # 计算标准差
+                    variance = sum([(x - sma) ** 2 for x in period_closes]) / period
+                    std = variance ** 0.5
+                    
+                    # 计算BOLL线
+                    upper = sma + (std_dev * std)
+                    lower = sma - (std_dev * std)
+                    
+                    upper_band.append(upper)
+                    middle_band.append(sma)
+                    lower_band.append(lower)
+                    
+                    # 存储BOLL指标到数据库
+                    self.db.save_boll_indicator(
+                        symbol=symbol,
+                        interval=interval,
+                        timestamp=klines[i]['timestamp'],
+                        upper_band=upper,
+                        middle_band=sma,
+                        lower_band=lower,
+                        period=period,
+                        std_dev=std_dev
+                    )
+            
+            return {
+                'upper': upper_band,
+                'middle': middle_band,
+                'lower': lower_band
+            }
+        except Exception as e:
+            logger.error(f"计算BOLL指标失败: {e}")
+            return {'upper': [], 'middle': [], 'lower': []}
+    
+    def get_klines_with_boll(self, symbol='BTCUSDT', interval='15m', limit=50):
+        """
+        获取K线数据并计算BOLL指标
+        
+        Args:
+            symbol (str): 交易对，默认BTCUSDT
+            interval (str): K线间隔，默认15m
+            limit (int): 获取数量，默认50根
+            
+        Returns:
+            dict: 包含K线数据和BOLL指标的字典
+        """
+        try:
+            # 获取K线数据
+            klines = self.get_futures_klines(symbol, interval, limit)
+            if not klines:
+                return None
+            
+            # 计算BOLL指标
+            boll = self.calculate_boll(klines, symbol, interval)
+            
+            return {
+                'symbol': symbol,
+                'interval': interval,
+                'klines': klines,
+                'boll': boll
+            }
+        except Exception as e:
+            logger.error(f"获取K线和BOLL数据失败: {e}")
             return None
