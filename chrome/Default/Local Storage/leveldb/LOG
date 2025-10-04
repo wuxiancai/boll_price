@@ -1,0 +1,15 @@
+2025/10/04-13:07:36.134 10a39 Reusing MANIFEST /Users/wuxiancai/boll_price/chrome/Default/Local Storage/leveldb/MANIFEST-000001
+2025/10/04-13:07:36.135 10a39 Recovering log #33
+2025/10/04-13:07:36.135 10a39 Reusing old log /Users/wuxiancai/boll_price/chrome/Default/Local Storage/leveldb/000033.log 
+2025/10/04-13:20:36.775 10a44 Level-0 table #37: started
+2025/10/04-13:20:36.779 10a44 Level-0 table #37: 18362 bytes OK
+2025/10/04-13:20:36.783 10a44 Delete type=0 #33
+2025/10/04-13:20:36.786 10a44 Compacting 4@0 + 1@1 files
+2025/10/04-13:20:36.789 10a44 Generated table #38@0: 38 keys, 4436 bytes
+2025/10/04-13:20:36.789 10a44 Compacted 4@0 + 1@1 files => 4436 bytes
+2025/10/04-13:20:36.790 10a44 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/10/04-13:20:36.791 10a44 Delete type=2 #29
+2025/10/04-13:20:36.791 10a44 Delete type=2 #34
+2025/10/04-13:20:36.791 10a44 Delete type=2 #37
+2025/10/04-13:20:36.791 10a44 Delete type=2 #32
+2025/10/04-13:20:36.791 10a44 Delete type=2 #27
