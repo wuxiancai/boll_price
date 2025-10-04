@@ -84,6 +84,239 @@ class BinanceFuturesClient:
             logger.error(f"获取合约账户信息失败: {e}")
             return None
     
+    def place_futures_order(self, symbol: str, side: str, order_type: str, quantity: float, 
+                           price: float = None, stop_price: float = None, reduce_only: bool = False):
+        """
+        下合约订单
+        
+        Args:
+            symbol: 交易对
+            side: 交易方向 (BUY/SELL)
+            order_type: 订单类型 (MARKET/LIMIT/STOP/STOP_MARKET等)
+            quantity: 数量
+            price: 价格 (限价单使用)
+            stop_price: 止损价格 (止损单使用)
+            reduce_only: 是否只减仓
+            
+        Returns:
+            dict: 订单信息
+        """
+        try:
+            params = {
+                'symbol': symbol,
+                'side': side,
+                'type': order_type,
+                'quantity': quantity,
+                'reduceOnly': reduce_only
+            }
+            
+            if price and order_type in ['LIMIT', 'STOP']:
+                params['price'] = price
+                params['timeInForce'] = 'GTC'
+            
+            if stop_price and order_type in ['STOP', 'STOP_MARKET']:
+                params['stopPrice'] = stop_price
+            
+            result = self.client.futures_create_order(**params)
+            logger.info(f"订单创建成功: {result}")
+            return result
+            
+        except BinanceAPIException as e:
+            logger.error(f"创建订单失败: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"创建订单错误: {e}")
+            raise
+    
+    def open_long_position(self, symbol: str, quantity: float, order_type: str = 'MARKET', price: float = None):
+        """
+        开多头仓位
+        
+        Args:
+            symbol: 交易对
+            quantity: 数量
+            order_type: 订单类型
+            price: 价格 (限价单使用)
+            
+        Returns:
+            dict: 订单信息
+        """
+        return self.place_futures_order(symbol, 'BUY', order_type, quantity, price)
+    
+    def open_short_position(self, symbol: str, quantity: float, order_type: str = 'MARKET', price: float = None):
+        """
+        开空头仓位
+        
+        Args:
+            symbol: 交易对
+            quantity: 数量
+            order_type: 订单类型
+            price: 价格 (限价单使用)
+            
+        Returns:
+            dict: 订单信息
+        """
+        return self.place_futures_order(symbol, 'SELL', order_type, quantity, price)
+    
+    def close_long_position(self, symbol: str, quantity: float, order_type: str = 'MARKET', price: float = None):
+        """
+        平多头仓位
+        
+        Args:
+            symbol: 交易对
+            quantity: 数量
+            order_type: 订单类型
+            price: 价格 (限价单使用)
+            
+        Returns:
+            dict: 订单信息
+        """
+        return self.place_futures_order(symbol, 'SELL', order_type, quantity, price, reduce_only=True)
+    
+    def close_short_position(self, symbol: str, quantity: float, order_type: str = 'MARKET', price: float = None):
+        """
+        平空头仓位
+        
+        Args:
+            symbol: 交易对
+            quantity: 数量
+            order_type: 订单类型
+            price: 价格 (限价单使用)
+            
+        Returns:
+            dict: 订单信息
+        """
+        return self.place_futures_order(symbol, 'BUY', order_type, quantity, price, reduce_only=True)
+    
+    def get_position_info(self, symbol: str):
+        """
+        获取指定交易对的持仓信息
+        
+        Args:
+            symbol: 交易对
+            
+        Returns:
+            dict: 持仓信息
+        """
+        try:
+            positions = self.client.futures_position_information(symbol=symbol)
+            
+            for position in positions:
+                if float(position['positionAmt']) != 0:
+                    return {
+                        'symbol': position['symbol'],
+                        'position_amt': float(position['positionAmt']),
+                        'entry_price': float(position['entryPrice']),
+                        'mark_price': float(position['markPrice']),
+                        'pnl': float(position['unRealizedProfit']),
+                        'position_side': position['positionSide'],
+                        'margin_type': position['marginType']
+                    }
+            
+            return None  # 无持仓
+            
+        except Exception as e:
+            logger.error(f"获取持仓信息失败: {e}")
+            return None
+    
+    def cancel_all_orders(self, symbol: str):
+        """
+        取消指定交易对的所有订单
+        
+        Args:
+            symbol: 交易对
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            result = self.client.futures_cancel_all_open_orders(symbol=symbol)
+            logger.info(f"取消所有订单成功: {result}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"取消所有订单失败: {e}")
+            return False
+    
+    def get_futures_klines(self, symbol: str, interval: str, limit: int = 50):
+        """
+        获取合约K线数据
+        
+        Args:
+            symbol: 交易对
+            interval: K线间隔
+            limit: 获取数量
+            
+        Returns:
+            list: K线数据列表
+        """
+        try:
+            klines = self.client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+            
+            formatted_klines = []
+            for kline in klines:
+                formatted_klines.append({
+                    'timestamp': kline[0],
+                    'open': float(kline[1]),
+                    'high': float(kline[2]),
+                    'low': float(kline[3]),
+                    'close': float(kline[4]),
+                    'volume': float(kline[5]),
+                    'close_time': kline[6],
+                    'quote_volume': float(kline[7]),
+                    'trades': int(kline[8]),
+                    'taker_buy_base': float(kline[9]),
+                    'taker_buy_quote': float(kline[10])
+                })
+            
+            return formatted_klines
+            
+        except Exception as e:
+            logger.error(f"获取合约K线数据失败: {e}")
+            return []
+    
+    def calculate_position_size(self, symbol: str, risk_percentage: float = 0.02, stop_loss_percentage: float = 0.01):
+        """
+        计算合适的仓位大小
+        
+        Args:
+            symbol: 交易对
+            risk_percentage: 风险百分比 (默认2%)
+            stop_loss_percentage: 止损百分比 (默认1%)
+            
+        Returns:
+            float: 建议的仓位大小
+        """
+        try:
+            # 获取账户信息
+            account = self.get_futures_account_info()
+            if not account:
+                return 0.0
+            
+            # 获取可用余额
+            available_balance = float(account.get('availableBalance', 0))
+            
+            # 计算风险金额
+            risk_amount = available_balance * risk_percentage
+            
+            # 获取当前价格
+            ticker = self.client.futures_symbol_ticker(symbol=symbol)
+            current_price = float(ticker['price'])
+            
+            # 计算止损价格差
+            stop_loss_amount = current_price * stop_loss_percentage
+            
+            # 计算仓位大小
+            if stop_loss_amount > 0:
+                position_size = risk_amount / stop_loss_amount
+                return round(position_size, 6)
+            
+            return 0.0
+            
+        except Exception as e:
+            logger.error(f"计算仓位大小失败: {e}")
+            return 0.0
+    
     def get_futures_balances(self, show_zero=False):
         """
         获取合约账户余额

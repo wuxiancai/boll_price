@@ -15,30 +15,73 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #c2e8e8 0%, #ecf0f6 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 1px;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            /* 玻璃质感背景 */
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0.15) 100%);
+            /* 毛玻璃效果 */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            /* 边框和圆角 */
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 24px;
+            /* 玻璃质感阴影 */
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.15),
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
             overflow: hidden;
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.6) 50%, 
+                transparent 100%);
         }
 
         .header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, #c2e8e8 0%, #ecf0f6 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            padding: 8px;
+            
             text-align: center;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.5) 50%, 
+                transparent 100%);
         }
 
         .header h1 {
             font-size: 2rem;
-            margin-bottom: 1px;
+            
             font-weight: 700;
         }
 
@@ -48,20 +91,40 @@
         }
 
         .controls {
-            padding: 20px 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
+            padding: 1px;
+            background: linear-gradient(135deg, #c2e8e8 0%, #ecf0f6 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 5px;
+            position: relative;
+        }
+
+        .controls::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.6) 50%, 
+                transparent 100%);
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, 
+                rgba(102, 126, 234, 0.8) 0%, 
+                rgba(118, 75, 162, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
-            border: none;
             padding: 12px 24px;
             border-radius: 25px;
             cursor: pointer;
@@ -70,19 +133,68 @@
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.5) 50%, 
+                transparent 100%);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            background: linear-gradient(135deg, 
+                rgba(102, 126, 234, 0.9) 0%, 
+                rgba(118, 75, 162, 0.9) 100%);
+            box-shadow: 
+                0 8px 25px rgba(102, 126, 234, 0.4),
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, 
+                rgba(79, 172, 254, 0.8) 0%, 
+                rgba(0, 242, 254, 0.8) 100%);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, 
+                rgba(79, 172, 254, 0.9) 0%, 
+                rgba(0, 242, 254, 0.9) 100%);
+            box-shadow: 
+                0 8px 25px rgba(79, 172, 254, 0.4),
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            background: linear-gradient(135deg, 
+                rgba(250, 112, 154, 0.8) 0%, 
+                rgba(254, 225, 64, 0.8) 100%);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, 
+                rgba(250, 112, 154, 0.9) 0%, 
+                rgba(254, 225, 64, 0.9) 100%);
+            box-shadow: 
+                0 8px 25px rgba(250, 112, 154, 0.4),
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
         .status {
@@ -90,49 +202,111 @@
             border-radius: 20px;
             font-weight: 600;
             font-size: 14px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.4) 50%, 
+                transparent 100%);
         }
 
         .status.online {
-            background: #d4edda;
+            background: linear-gradient(135deg, 
+                rgba(212, 237, 218, 0.8) 0%, 
+                rgba(212, 237, 218, 0.6) 100%);
             color: #155724;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
         }
 
         .status.offline {
-            background: #f8d7da;
+            background: linear-gradient(135deg, 
+                rgba(248, 215, 218, 0.8) 0%, 
+                rgba(248, 215, 218, 0.6) 100%);
             color: #721c24;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
         }
 
         .content {
-            padding: 30px;
+            padding: 5px;
         }
 
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 5px;
         }
 
         .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e9ecef;
+            /* 玻璃质感背景 */
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0.15) 100%);
+            /* 毛玻璃效果 */
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            /* 边框和圆角 */
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            /* 内边距 */
+            padding: 5px;
+            /* 玻璃质感阴影 */
+            box-shadow: 
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            /* 过渡动画 */
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.5) 50%, 
+                transparent 100%);
         }
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.3) 0%, 
+                rgba(255, 255, 255, 0.2) 100%);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.15),
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
         }
 
         .card-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f8f9fa;
+            
+            padding-bottom: 5px;
+            
         }
 
         .card-icon {
@@ -248,9 +422,33 @@
             justify-content: space-around;
             align-items: center;
             padding: 20px 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
+            background: linear-gradient(135deg, 
+                rgba(102, 126, 234, 0.8) 0%, 
+                rgba(118, 75, 162, 0.8) 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 18px;
             margin: 15px 0;
+            box-shadow: 
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .boll-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.6) 50%, 
+                transparent 100%);
         }
 
         .boll-item {
@@ -271,12 +469,36 @@
             font-size: 18px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0.15) 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: 10px;
             min-width: 80px;
             text-align: center;
             transition: all 0.3s ease;
+            box-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .boll-value::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.5) 50%, 
+                transparent 100%);
         }
 
         .boll-value.updating {
@@ -301,6 +523,204 @@
             transform: scale(1.02);
             transition: all 0.3s ease;
         }
+
+        /* 交易策略面板样式 */
+        .trading-strategy-panel {
+            padding: 15px;
+        }
+
+        .strategy-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .status-value {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .strategy-config {
+            margin-bottom: 15px;
+        }
+
+        .config-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
+            margin: 8px 0;
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            /* 玻璃质感背景 */
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15) 0%, 
+                rgba(255, 255, 255, 0.08) 100%);
+            /* 毛玻璃效果 */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            /* 边框和圆角 */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            /* 阴影效果 */
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.1),
+                0 1px 3px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            min-height: 32px;
+            /* 过渡动画 */
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .config-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.4) 50%, 
+                transparent 100%);
+        }
+
+        .config-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 
+                0 6px 12px rgba(0, 0, 0, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.2) 0%, 
+                rgba(255, 255, 255, 0.12) 100%);
+        }
+
+        .config-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            margin-right: 12px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .config-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.25) 0%, 
+                rgba(255, 255, 255, 0.15) 100%);
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            min-width: 45px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .trading-logs {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 15px;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .logs-header span {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .btn-clear {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .logs-content {
+            max-height: 200px;
+            overflow-y: auto;
+            background: transparent;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .log-item {
+            font-size: 12px;
+            margin-bottom: 5px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+
+        .log-item.success {
+            border-left-color: #28a745;
+            color: #90ee90;
+        }
+
+        .log-item.error {
+            border-left-color: #dc3545;
+            color: #ffb3b3;
+        }
+
+        .log-item.warning {
+            border-left-color: #ffc107;
+            color: #ffeb3b;
+        }
+
+
 
         @media (max-width: 768px) {
             .grid {
@@ -381,6 +801,58 @@
                         </div>
                         <div class="real-time-price" id="realTimePrice">合约价格: --</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 交易日志 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🤖</div>
+                    <div class="card-title">交易日志</div>
+                </div>
+                    <!-- 策略参数配置 -->
+                    <div class="strategy-config">
+                        <div class="config-title">策略参数配置</div>
+                        <div class="config-grid">
+                            <div class="config-item">
+                                <span class="config-label">交易币对:</span>
+                                <span class="config-value" id="configSymbol">{{ config.symbol }}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">K线周期:</span>
+                                <span class="config-value" id="configInterval">{{ config.kline_interval }}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">杠杆倍数:</span>
+                                <span class="config-value" id="configLeverage">{{ config.leverage }}x</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">仓位比例:</span>
+                                <span class="config-value" id="configPositionRatio">{{ (config.position_ratio * 100)|int }}%</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">BOLL周期:</span>
+                                <span class="config-value" id="configBollPeriod">{{ config.boll_period }}</span>
+                            </div>
+                            <div class="config-item">
+                                <span class="config-label">标准差倍数:</span>
+                                <span class="config-value" id="configBollStdDev">{{ config.boll_std_dev }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 交易日志 -->
+                    <div class="trading-logs">
+                        <div class="logs-header">
+
+                            <button class="btn-clear" onclick="clearTradingLogs()">清空</button>
+                        </div>
+                        <div class="logs-content" id="tradingLogs">
+                            <div class="log-item">等待策略启动...</div>
+                        </div>
+                    </div>
+                    
+
                 </div>
             </div>
 
@@ -1205,6 +1677,268 @@
             }
         }
 
+        // 交易策略控制变量
+        let strategyStatusInterval = null;
+        let isStrategyRunning = false;
+
+        /**
+         * 启动交易策略
+         */
+        async function startTradingStrategy() {
+            try {
+                const response = await fetch('/api/trading/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    isStrategyRunning = true;
+                    updateStrategyUI();
+                    addTradingLog('策略启动成功', 'success');
+                    
+                    // 开始定期更新策略状态
+                    startStrategyStatusUpdates();
+                } else {
+                    addTradingLog(`策略启动失败: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('启动策略失败:', error);
+                addTradingLog(`策略启动失败: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * 停止交易策略
+         */
+        async function stopTradingStrategy() {
+            try {
+                const response = await fetch('/api/trading/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    isStrategyRunning = false;
+                    updateStrategyUI();
+                    addTradingLog('策略停止成功', 'warning');
+                    
+                    // 停止状态更新
+                    stopStrategyStatusUpdates();
+                } else {
+                    addTradingLog(`策略停止失败: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('停止策略失败:', error);
+                addTradingLog(`策略停止失败: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * 显示策略配置对话框
+         */
+        function showStrategyConfig() {
+            // 简单的配置对话框
+            const symbol = prompt('请输入交易对 (当前: BTCUSDT):', 'BTCUSDT');
+            const interval = prompt('请输入K线周期 (当前: 1m):', '1m');
+            
+            if (symbol && interval) {
+                updateStrategyConfig(symbol, interval);
+            }
+        }
+
+        /**
+         * 更新策略配置
+         */
+        async function updateStrategyConfig(symbol, interval) {
+            try {
+                const response = await fetch('/api/trading/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        interval: interval
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addTradingLog(`配置更新成功: ${symbol} ${interval}`, 'success');
+                } else {
+                    addTradingLog(`配置更新失败: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('更新配置失败:', error);
+                addTradingLog(`配置更新失败: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * 开始策略状态更新
+         */
+        function startStrategyStatusUpdates() {
+            if (strategyStatusInterval) {
+                clearInterval(strategyStatusInterval);
+            }
+            
+            strategyStatusInterval = setInterval(updateStrategyStatus, 2000);
+            updateStrategyStatus(); // 立即更新一次
+        }
+
+        /**
+         * 停止策略状态更新
+         */
+        function stopStrategyStatusUpdates() {
+            if (strategyStatusInterval) {
+                clearInterval(strategyStatusInterval);
+                strategyStatusInterval = null;
+            }
+        }
+
+        /**
+         * 更新策略状态显示
+         */
+        async function updateStrategyStatus() {
+            try {
+                const response = await fetch('/api/trading/status');
+                const status = await response.json();
+                
+                if (status.success) {
+                    const data = status.data;
+                    
+                    // 更新状态显示
+                    document.getElementById('strategyRunning').textContent = data.running ? '运行中' : '未启动';
+                    document.getElementById('strategyState').textContent = data.state || '等待开仓';
+                    document.getElementById('positionSide').textContent = data.position_side || '无持仓';
+                    document.getElementById('positionSize').textContent = data.position_size || '0';
+                    
+                    // 更新运行状态
+                    isStrategyRunning = data.running;
+                    updateStrategyUI();
+                    
+                    // 同时获取最新的交易日志
+                    fetchTradingLogs();
+                }
+            } catch (error) {
+                console.error('获取策略状态失败:', error);
+            }
+        }
+
+        /**
+         * 更新策略控制UI
+         */
+        function updateStrategyUI() {
+            const startBtn = document.getElementById('startStrategyBtn');
+            const stopBtn = document.getElementById('stopStrategyBtn');
+            
+            if (isStrategyRunning) {
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                startBtn.textContent = '运行中...';
+            } else {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                startBtn.textContent = '启动策略';
+            }
+        }
+
+        /**
+         * 添加交易日志
+         */
+        function addTradingLog(message, type = 'info') {
+            const logsContent = document.getElementById('tradingLogs');
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            logItem.textContent = `[${timestamp}] ${message}`;
+            
+            // 插入到顶部
+            logsContent.insertBefore(logItem, logsContent.firstChild);
+            
+            // 限制日志数量
+            const logs = logsContent.querySelectorAll('.log-item');
+            if (logs.length > 50) {
+                logsContent.removeChild(logs[logs.length - 1]);
+            }
+        }
+
+        /**
+         * 清空交易日志
+         */
+        async function clearTradingLogs() {
+            try {
+                const response = await fetch('/api/trading/logs', {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const logsContent = document.getElementById('tradingLogs');
+                    logsContent.innerHTML = '<div class="log-item">日志已清空</div>';
+                } else {
+                    console.error('清空日志失败:', result.message);
+                }
+            } catch (error) {
+                console.error('清空日志失败:', error);
+            }
+        }
+
+        /**
+         * 从服务器获取交易日志
+         */
+        async function fetchTradingLogs() {
+            try {
+                const response = await fetch('/api/trading/logs');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayTradingLogs(result.data);
+                }
+            } catch (error) {
+                console.error('获取交易日志失败:', error);
+            }
+        }
+
+        /**
+         * 显示交易日志
+         */
+        function displayTradingLogs(logs) {
+            const logsContent = document.getElementById('tradingLogs');
+            
+            if (logs.length === 0) {
+                logsContent.innerHTML = '<div class="log-item">暂无日志</div>';
+                return;
+            }
+            
+            logsContent.innerHTML = '';
+            
+            logs.forEach(log => {
+                const logItem = document.createElement('div');
+                logItem.className = `log-item ${log.type}`;
+                
+                const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                logItem.textContent = `[${timestamp}] ${log.message}`;
+                
+                logsContent.appendChild(logItem);
+            });
+        }
+
+
+
+
+
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             // 启动实时BOLL WebSocket连接
@@ -1217,6 +1951,15 @@
             setTimeout(() => {
                 refreshKlineChart();
             }, 2000);
+            
+            // 立即获取交易日志
+            fetchTradingLogs();
+            
+            // 初始化策略状态
+            updateStrategyStatus();
+            
+            // 设置定时刷新日志（每5秒刷新一次）
+            setInterval(fetchTradingLogs, 5000);
         });
     </script>
 </body>

@@ -25,6 +25,44 @@ USE_TESTNET = False
 # API请求超时设置（秒）
 REQUEST_TIMEOUT = 30
 
+# ==================== 交易策略配置 ====================
+# 默认交易币对
+DEFAULT_SYMBOL = "BTCUSDT"
+
+# 默认K线周期
+DEFAULT_KLINE_INTERVAL = "15m"
+
+# 默认开仓金额比例（总钱包余额的百分比）
+DEFAULT_POSITION_RATIO = 0.70  # 70%
+
+# 默认杠杆倍数
+DEFAULT_LEVERAGE = 10
+
+# 默认手续费率
+DEFAULT_FEE_RATE = 0.0005  # 0.05%
+
+# BOLL策略参数
+BOLL_PERIOD = 20  # BOLL指标周期
+BOLL_STD_DEV = 2  # 标准差倍数
+
+# 交易策略配置函数
+def get_trading_config():
+    """
+    获取交易策略配置
+    
+    Returns:
+        dict: 交易策略配置字典
+    """
+    return {
+        'symbol': DEFAULT_SYMBOL,
+        'kline_interval': DEFAULT_KLINE_INTERVAL,
+        'position_ratio': DEFAULT_POSITION_RATIO,
+        'leverage': DEFAULT_LEVERAGE,
+        'fee_rate': DEFAULT_FEE_RATE,
+        'boll_period': BOLL_PERIOD,
+        'boll_std_dev': BOLL_STD_DEV
+    }
+
 # 获取API配置的函数
 def get_api_config(api_type='futures'):
     """

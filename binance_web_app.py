@@ -6,6 +6,8 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from binance_client import BinanceFuturesClient
+from trading_strategy import get_trading_engine
+from binance_config import get_trading_config
 import logging
 from datetime import datetime
 
@@ -35,7 +37,9 @@ def index():
     """
     主页面
     """
-    return render_template('index.html')
+    # 获取交易策略配置
+    config = get_trading_config()
+    return render_template('index.html', config=config)
 
 @app.route('/api/account/info')
 def get_account_info():
@@ -218,8 +222,13 @@ def get_klines():
         if not klines:
             return jsonify({'error': '获取K线数据失败'}), 500
         
-        # 第三步：计算BOLL指标(20,2)并存储到数据库
-        boll_data = binance_client.calculate_boll(klines, symbol, interval, period=20, std_dev=2)
+        # 第三步：计算BOLL指标并存储到数据库（使用配置参数）
+        trading_config = get_trading_config()
+        boll_data = binance_client.calculate_boll(
+            klines, symbol, interval, 
+            period=trading_config['boll_period'], 
+            std_dev=trading_config['boll_std_dev']
+        )
         
         # 组合数据用于前端显示
         chart_data = []
@@ -278,12 +287,171 @@ def get_api_status():
     """
     获取API状态
     """
-    return jsonify({
-        'success': True,
-        'status': 'running',
-        'binance_client_initialized': binance_client is not None,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    })
+    try:
+        return jsonify({
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'client_initialized': binance_client is not None
+        })
+    except Exception as e:
+        logger.error(f"获取API状态失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# 交易策略相关API
+@app.route('/api/trading/status')
+def get_trading_status():
+    """
+    获取交易策略状态
+    """
+    try:
+        trading_engine = get_trading_engine()
+        status = trading_engine.get_status()
+        return jsonify({
+            'status': 'success',
+            'data': status
+        })
+    except Exception as e:
+        logger.error(f"获取交易策略状态失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trading/start', methods=['POST'])
+def start_trading():
+    """
+    启动自动交易策略
+    """
+    try:
+        trading_engine = get_trading_engine()
+        
+        # 设置回调函数
+        def state_change_callback(old_state, new_state, reason):
+            logger.info(f"策略状态变化: {old_state.value} -> {new_state.value} ({reason})")
+        
+        def trade_callback(trade_info):
+            logger.info(f"交易执行: {trade_info}")
+        
+        trading_engine.set_callbacks(state_change_callback, trade_callback)
+        
+        if trading_engine.start():
+            return jsonify({
+                'status': 'success',
+                'message': '自动交易策略已启动'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '启动自动交易策略失败'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"启动交易策略失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trading/stop', methods=['POST'])
+def stop_trading():
+    """
+    停止自动交易策略
+    """
+    try:
+        trading_engine = get_trading_engine()
+        
+        if trading_engine.stop():
+            return jsonify({
+                'status': 'success',
+                'message': '自动交易策略已停止'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '停止自动交易策略失败'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"停止交易策略失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trading/config', methods=['GET', 'POST'])
+def trading_config():
+    """
+    获取或设置交易策略配置
+    """
+    try:
+        trading_engine = get_trading_engine()
+        
+        if request.method == 'GET':
+            # 获取当前配置
+            config = {
+                'symbol': trading_engine.symbol,
+                'interval': trading_engine.interval,
+                'update_interval': trading_engine.update_interval
+            }
+            return jsonify({
+                'status': 'success',
+                'data': config
+            })
+        
+        elif request.method == 'POST':
+            # 更新配置
+            data = request.get_json()
+            
+            if 'symbol' in data:
+                trading_engine.symbol = data['symbol']
+            if 'interval' in data:
+                trading_engine.interval = data['interval']
+            if 'update_interval' in data:
+                trading_engine.update_interval = data['update_interval']
+            
+            return jsonify({
+                'status': 'success',
+                'message': '交易策略配置已更新'
+            })
+            
+    except Exception as e:
+        logger.error(f"交易策略配置操作失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trading/logs', methods=['GET'])
+def trading_logs():
+    """
+    获取交易日志
+    """
+    try:
+        trading_engine = get_trading_engine()
+        logs = trading_engine.get_logs()
+        
+        return jsonify({
+            'success': True,
+            'data': logs
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'获取日志失败: {str(e)}'
+        })
+
+@app.route('/api/trading/logs', methods=['DELETE'])
+def clear_trading_logs():
+    """
+    清空交易日志
+    """
+    try:
+        trading_engine = get_trading_engine()
+        trading_engine.clear_logs()
+        
+        return jsonify({
+            'success': True,
+            'message': '日志已清空'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'清空日志失败: {str(e)}'
+        })
+
+
+
+
 
 @app.errorhandler(404)
 def not_found(error):
@@ -299,11 +467,28 @@ def internal_error(error):
     """
     return jsonify({'error': '服务器内部错误'}), 500
 
+def auto_start_trading():
+    """
+    自动启动交易策略
+    """
+    try:
+        trading_engine = get_trading_engine()
+        if trading_engine:
+            trading_engine.start()
+            logger.info("🚀 交易策略已自动启动")
+            print("🚀 交易策略已自动启动")
+        else:
+            logger.error("❌ 交易引擎初始化失败")
+            print("❌ 交易引擎初始化失败")
+    except Exception as e:
+        logger.error(f"❌ 自动启动交易策略失败: {e}")
+        print(f"❌ 自动启动交易策略失败: {e}")
+
 if __name__ == '__main__':
     # 初始化币安客户端
     if init_binance_client():
         print("🚀 币安账户信息Web应用启动中...")
-        print("📱 访问地址: http://localhost:9999")
+        print("📱 访问地址: http://localhost:9998")
         print("📊 API文档:")
         print("  - 合约账户信息: /api/account/info")
         print("  - 合约账户余额: /api/account/balances")
@@ -315,6 +500,9 @@ if __name__ == '__main__':
         print("  - K线数据和BOLL指标: /api/market/klines")
         print("  - 所有数据: /api/account/all")
         print("  - API状态: /api/status")
+        
+        # 自动启动交易策略
+        auto_start_trading()
         
         # 启动Flask应用
         app.run(host='0.0.0.0', port=9999, debug=True)
