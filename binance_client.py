@@ -253,6 +253,10 @@ class BinanceFuturesClient:
         try:
             klines = self.client.futures_klines(symbol=symbol, interval=interval, limit=limit)
             
+            if not klines:
+                logger.warning(f"获取到的K线数据为空: {symbol} {interval}")
+                return []
+            
             formatted_klines = []
             for kline in klines:
                 formatted_klines.append({
@@ -269,10 +273,14 @@ class BinanceFuturesClient:
                     'taker_buy_quote': float(kline[10])
                 })
             
+            logger.debug(f"成功获取{len(formatted_klines)}根K线数据: {symbol} {interval}")
             return formatted_klines
             
+        except BinanceAPIException as e:
+            logger.error(f"币安API错误 - 获取K线数据失败: 错误代码={e.code}, 错误信息={e.message}, 交易对={symbol}")
+            return []
         except Exception as e:
-            logger.error(f"获取合约K线数据失败: {e}")
+            logger.error(f"获取合约K线数据失败: {type(e).__name__}: {e}, 交易对={symbol}")
             return []
     
     def calculate_position_size(self, symbol: str, risk_percentage: float = 0.02, stop_loss_percentage: float = 0.01):
@@ -370,17 +378,32 @@ class BinanceFuturesClient:
             for position in positions:
                 position_amt = float(position.get('positionAmt', 0))
                 if position_amt != 0:  # 只显示有持仓的合约
+                    entry_price = float(position.get('entryPrice', 0))
+                    mark_price = float(position.get('markPrice', 0))
+                    unrealized_pnl = float(position.get('unRealizedProfit', 0))
+                    leverage = float(position.get('leverage', 1))
+                    
+                    # 计算ROI收益率
+                    # ROI% = Unrealized PNL / Entry Margin
+                    # Entry Margin = |position_amount| * entry_price / leverage
+                    percentage = 0.0
+                    if entry_price > 0 and leverage > 0:
+                        entry_margin = abs(position_amt) * entry_price / leverage
+                        if entry_margin > 0:
+                            percentage = (unrealized_pnl / entry_margin) * 100
+                    
                     active_positions.append({
                         'symbol': position.get('symbol'),
                         'position_amt': position_amt,
-                        'entry_price': float(position.get('entryPrice', 0)),
-                        'mark_price': float(position.get('markPrice', 0)),
-                        'unrealized_pnl': float(position.get('unRealizedProfit', 0)),
-                        'percentage': float(position.get('percentage', 0)),
+                        'entry_price': entry_price,
+                        'mark_price': mark_price,
+                        'unrealized_pnl': unrealized_pnl,
+                        'percentage': percentage,
                         'position_side': position.get('positionSide'),
                         'isolated': position.get('isolated'),
                         'notional': float(position.get('notional', 0)),
                         'isolated_wallet': float(position.get('isolatedWallet', 0)),
+                        'leverage': leverage,
                         'update_time': datetime.fromtimestamp(int(position.get('updateTime', 0))/1000).strftime('%Y-%m-%d %H:%M:%S')
                     })
             
@@ -718,11 +741,16 @@ class BinanceFuturesClient:
             # 获取K线数据
             klines = self.get_futures_klines(symbol, interval, limit)
             if not klines:
+                logger.warning(f"无法获取K线数据: {symbol} {interval}")
                 return None
             
             # 计算BOLL指标
             boll = self.calculate_boll(klines, symbol, interval)
+            if not boll:
+                logger.warning(f"无法计算BOLL指标: {symbol} {interval}")
+                return None
             
+            logger.debug(f"成功获取K线和BOLL数据: {symbol} {interval}, K线数量={len(klines)}, BOLL数量={len(boll)}")
             return {
                 'symbol': symbol,
                 'interval': interval,
@@ -730,5 +758,5 @@ class BinanceFuturesClient:
                 'boll': boll
             }
         except Exception as e:
-            logger.error(f"获取K线和BOLL数据失败: {e}")
+            logger.error(f"获取K线和BOLL数据失败: {type(e).__name__}: {e}, 交易对={symbol}")
             return None

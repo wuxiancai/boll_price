@@ -189,6 +189,14 @@ class TradingEngine:
         获取最新的K线数据和BOLL指标
         """
         try:
+            # 先测试API连接
+            try:
+                server_time = self.client.client.get_server_time()
+                logger.debug(f"API连接正常，服务器时间: {datetime.fromtimestamp(server_time['serverTime']/1000)}")
+            except Exception as conn_e:
+                logger.error(f"API连接测试失败: {conn_e}")
+                return False
+            
             # 获取K线数据和BOLL指标
             data = self.client.get_klines_with_boll(self.symbol, self.interval, 50)
             
@@ -201,20 +209,56 @@ class TradingEngine:
                     latest_kline = klines[-1]
                     self.last_close_price = float(latest_kline['close'])
                     
-                    # 获取BOLL指标
-                    latest_boll = boll[-1]
-                    self.boll_up = latest_boll['upper']
-                    self.boll_mb = latest_boll['middle']
-                    self.boll_dn = latest_boll['lower']
-                    
-                    logger.info(f"市场数据更新: 收盘价={self.last_close_price}, UP={self.boll_up}, MB={self.boll_mb}, DN={self.boll_dn}")
-                    return True
+                    # 获取BOLL指标 - 修复数据结构访问错误
+                    # boll是字典格式: {'upper': [values], 'middle': [values], 'lower': [values]}
+                    if isinstance(boll, dict) and 'upper' in boll and 'middle' in boll and 'lower' in boll:
+                        upper_values = boll['upper']
+                        middle_values = boll['middle']
+                        lower_values = boll['lower']
+                        
+                        # 确保有足够的数据且最后一个值不为None
+                        if (len(upper_values) > 0 and len(middle_values) > 0 and len(lower_values) > 0 and
+                            upper_values[-1] is not None and middle_values[-1] is not None and lower_values[-1] is not None):
+                            
+                            self.boll_up = float(upper_values[-1])
+                            self.boll_mb = float(middle_values[-1])
+                            self.boll_dn = float(lower_values[-1])
+                            
+                            logger.info(f"市场数据更新: 收盘价={self.last_close_price}, UP={self.boll_up}, MB={self.boll_mb}, DN={self.boll_dn}")
+                            return True
+                        else:
+                            logger.warning(f"BOLL指标数据无效: upper={len(upper_values) if upper_values else 0}, middle={len(middle_values) if middle_values else 0}, lower={len(lower_values) if lower_values else 0}")
+                            logger.warning(f"最后一个BOLL值: UP={upper_values[-1] if upper_values else None}, MB={middle_values[-1] if middle_values else None}, DN={lower_values[-1] if lower_values else None}")
+                            return False
+                    else:
+                        logger.warning(f"BOLL数据格式错误: {type(boll)}, 内容: {boll}")
+                        return False
+                else:
+                    logger.warning(f"获取的K线或BOLL数据为空: klines={len(klines) if klines else 0}, boll={boll}")
+                    return False
+            else:
+                logger.warning(f"API返回数据格式错误: {data}")
+                return False
             
-            logger.warning("获取市场数据失败")
+        except BinanceAPIException as e:
+            logger.error(f"币安API错误: 错误代码={e.code}, 错误信息={e.message}")
             return False
-            
+        except KeyError as e:
+            logger.error(f"数据结构访问错误: 缺少键 {e}，可能是BOLL数据格式不正确")
+            logger.error(f"当前数据结构: {data if 'data' in locals() else 'data变量不存在'}")
+            return False
+        except IndexError as e:
+            logger.error(f"数据索引错误: {e}，可能是K线或BOLL数据为空")
+            return False
+        except (TypeError, ValueError) as e:
+            logger.error(f"数据类型或值错误: {e}，可能是数据格式不正确")
+            return False
         except Exception as e:
-            logger.error(f"更新市场数据错误: {e}")
+            logger.error(f"更新市场数据错误: {type(e).__name__}: {e}")
+            logger.error(f"错误详情: {str(e)}")
+            # 添加调试信息
+            if 'data' in locals():
+                logger.error(f"API返回数据: {data}")
             return False
     
     def change_state(self, new_state: TradingState, reason: str = ""):

@@ -10,16 +10,159 @@ from trading_strategy import get_trading_engine
 from binance_config import get_trading_config
 import logging
 from datetime import datetime
+import subprocess
+import socket
+import time
+import os
+import signal
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 设置werkzeug日志级别为WARNING，减少HTTP请求日志
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
 
 # 全局客户端实例
 binance_client = None
+
+def check_port_in_use(port):
+    """
+    检查指定端口是否被占用
+    
+    Args:
+        port (int): 要检查的端口号
+        
+    Returns:
+        bool: True表示端口被占用，False表示端口可用
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)
+            result = sock.connect_ex(('localhost', port))
+            return result == 0
+    except Exception as e:
+        logger.warning(f"检查端口{port}时发生错误: {e}")
+        return False
+
+def get_process_using_port(port):
+    """
+    获取占用指定端口的进程ID
+    
+    Args:
+        port (int): 端口号
+        
+    Returns:
+        list: 占用端口的进程ID列表
+    """
+    try:
+        # 使用lsof命令查找占用端口的进程
+        result = subprocess.run(
+            ['lsof', '-ti', f':{port}'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            pids = [int(pid.strip()) for pid in result.stdout.strip().split('\n') if pid.strip()]
+            return pids
+        return []
+    except Exception as e:
+        logger.warning(f"获取端口{port}占用进程时发生错误: {e}")
+        return []
+
+def kill_processes_using_port(port):
+    """
+    杀死占用指定端口的所有进程
+    
+    Args:
+        port (int): 端口号
+        
+    Returns:
+        bool: True表示成功清理，False表示清理失败
+    """
+    try:
+        pids = get_process_using_port(port)
+        if not pids:
+            logger.info(f"端口{port}没有被占用")
+            return True
+        
+        logger.info(f"发现端口{port}被以下进程占用: {pids}")
+        
+        killed_count = 0
+        for pid in pids:
+            try:
+                # 首先尝试优雅地终止进程
+                os.kill(pid, signal.SIGTERM)
+                logger.info(f"发送SIGTERM信号给进程{pid}")
+                time.sleep(1)
+                
+                # 检查进程是否还存在
+                try:
+                    os.kill(pid, 0)  # 检查进程是否存在
+                    # 如果进程还存在，强制杀死
+                    os.kill(pid, signal.SIGKILL)
+                    logger.info(f"强制杀死进程{pid}")
+                except ProcessLookupError:
+                    # 进程已经不存在了
+                    pass
+                
+                killed_count += 1
+                
+            except ProcessLookupError:
+                logger.info(f"进程{pid}已经不存在")
+                killed_count += 1
+            except PermissionError:
+                logger.error(f"没有权限杀死进程{pid}")
+            except Exception as e:
+                logger.error(f"杀死进程{pid}时发生错误: {e}")
+        
+        # 等待一下让进程完全退出
+        time.sleep(2)
+        
+        # 再次检查端口是否被释放
+        if not check_port_in_use(port):
+            logger.info(f"✅ 端口{port}已成功释放")
+            return True
+        else:
+            logger.warning(f"⚠️ 端口{port}仍然被占用")
+            return False
+            
+    except Exception as e:
+        logger.error(f"清理端口{port}时发生错误: {e}")
+        return False
+
+def ensure_port_available(port, max_retries=3):
+    """
+    确保指定端口可用，如果被占用则尝试清理
+    
+    Args:
+        port (int): 端口号
+        max_retries (int): 最大重试次数
+        
+    Returns:
+        bool: True表示端口可用，False表示无法释放端口
+    """
+    for attempt in range(max_retries):
+        if not check_port_in_use(port):
+            logger.info(f"✅ 端口{port}可用")
+            return True
+        
+        logger.warning(f"⚠️ 端口{port}被占用，尝试清理... (第{attempt + 1}次)")
+        
+        if kill_processes_using_port(port):
+            logger.info(f"✅ 端口{port}清理成功")
+            return True
+        else:
+            logger.warning(f"⚠️ 端口{port}清理失败，等待后重试...")
+            time.sleep(2)
+    
+    logger.error(f"❌ 无法释放端口{port}，已尝试{max_retries}次")
+    return False
 
 def init_binance_client():
     """初始化币安合约客户端"""
@@ -485,10 +628,20 @@ def auto_start_trading():
         print(f"❌ 自动启动交易策略失败: {e}")
 
 if __name__ == '__main__':
+    # 定义固定端口
+    APP_PORT = 5001
+    
+    print("🔍 检查端口占用情况...")
+    
+    # 确保端口可用
+    if not ensure_port_available(APP_PORT):
+        print(f"❌ 无法释放端口{APP_PORT}，程序退出")
+        exit(1)
+    
     # 初始化币安客户端
     if init_binance_client():
         print("🚀 币安账户信息Web应用启动中...")
-        print("📱 访问地址: http://localhost:9998")
+        print(f"📱 访问地址: http://localhost:{APP_PORT}")
         print("📊 API文档:")
         print("  - 合约账户信息: /api/account/info")
         print("  - 合约账户余额: /api/account/balances")
@@ -504,8 +657,23 @@ if __name__ == '__main__':
         # 自动启动交易策略
         auto_start_trading()
         
-        # 启动Flask应用
-        app.run(host='0.0.0.0', port=9999, debug=True)
+        print(f"🌐 Flask应用正在启动，端口: {APP_PORT}")
+        
+        # 启动Flask应用（关闭debug模式以减少日志输出）
+        try:
+            app.run(host='0.0.0.0', port=APP_PORT, debug=False)
+        except OSError as e:
+            if "Address already in use" in str(e):
+                print(f"❌ 端口{APP_PORT}仍然被占用，请手动检查")
+                print("可以尝试运行以下命令手动清理:")
+                print(f"lsof -ti:{APP_PORT} | xargs kill -9")
+            else:
+                print(f"❌ 启动Flask应用时发生错误: {e}")
+            exit(1)
+        except Exception as e:
+            print(f"❌ 启动应用时发生未知错误: {e}")
+            exit(1)
     else:
         print("❌ 币安客户端初始化失败，无法启动Web应用")
         print("请检查API密钥配置")
+        exit(1)

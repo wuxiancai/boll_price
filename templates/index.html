@@ -330,7 +330,8 @@
 
         .info-item {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 20px;
             align-items: center;
             padding: 12px 0;
             border-bottom: 1px solid #f8f9fa;
@@ -342,7 +343,7 @@
 
         .info-label {
             font-weight: 600;
-            color: #6c757d;
+            color: #2c3e50;
             font-size: 14px;
         }
 
@@ -422,11 +423,7 @@
             justify-content: space-around;
             align-items: center;
             padding: 20px 10px;
-            background: linear-gradient(135deg, 
-                rgba(102, 126, 234, 0.8) 0%, 
-                rgba(118, 75, 162, 0.8) 100%);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 18px;
             margin: 15px 0;
@@ -455,7 +452,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: white;
+            color: #2c3e50;
         }
 
         .boll-label {
@@ -538,7 +535,7 @@
 
         .status-item {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             padding: 8px 12px;
             background: rgba(255, 255, 255, 0.1);
@@ -563,7 +560,7 @@
         .config-title {
             font-size: 14px;
             font-weight: bold;
-            color: #ffffff;
+            color: #2c3e50;
             margin-bottom: 10px;
             padding-bottom: 5px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -578,7 +575,8 @@
 
         .config-item {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 20px;
             align-items: center;
             padding: 8px 12px;
             /* 玻璃质感背景 */
@@ -629,7 +627,7 @@
 
         .config-label {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
             font-weight: 500;
             margin-right: 12px;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -638,7 +636,7 @@
         .config-value {
             font-size: 12px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.95);
+            color: #2c3e50;
             background: linear-gradient(135deg, 
                 rgba(255, 255, 255, 0.25) 0%, 
                 rgba(255, 255, 255, 0.15) 100%);
@@ -662,7 +660,7 @@
 
         .logs-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             margin-bottom: 10px;
         }
@@ -799,60 +797,50 @@
                                 <span class="boll-value" id="bollDn">--</span>
                             </div>
                         </div>
-                        <div class="real-time-price" id="realTimePrice">合约价格: --</div>
+                        <div class="real-time-price" id="realTimePrice">合约实时价格: --</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 交易日志 -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">🤖</div>
-                    <div class="card-title">交易日志</div>
-                </div>
-                    <!-- 策略参数配置 -->
+            <!-- 策略参数配置和交易状态日志 -->
+            <div class="grid">
+                <!-- 策略参数配置 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🤖</div>
+                        <div class="card-title">策略参数配置</div>
+                    </div>
                     <div class="strategy-config">
-                        <div class="config-title">策略参数配置</div>
-                        <div class="config-grid">
-                            <div class="config-item">
-                                <span class="config-label">交易币对:</span>
-                                <span class="config-value" id="configSymbol">{{ config.symbol }}</span>
-                            </div>
-                            <div class="config-item">
-                                <span class="config-label">K线周期:</span>
-                                <span class="config-value" id="configInterval">{{ config.kline_interval }}</span>
-                            </div>
-                            <div class="config-item">
-                                <span class="config-label">杠杆倍数:</span>
-                                <span class="config-value" id="configLeverage">{{ config.leverage }}x</span>
-                            </div>
-                            <div class="config-item">
-                                <span class="config-label">仓位比例:</span>
-                                <span class="config-value" id="configPositionRatio">{{ (config.position_ratio * 100)|int }}%</span>
-                            </div>
-                            <div class="config-item">
-                                <span class="config-label">BOLL周期:</span>
-                                <span class="config-value" id="configBollPeriod">{{ config.boll_period }}</span>
-                            </div>
-                            <div class="config-item">
-                                <span class="config-label">标准差倍数:</span>
-                                <span class="config-value" id="configBollStdDev">{{ config.boll_std_dev }}</span>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">交易币对:</span>
+                            <span class="info-value" id="configSymbol">{{ config.symbol }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">K线周期:</span>
+                            <span class="info-value" id="configInterval">{{ config.kline_interval }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">杠杆倍数:</span>
+                            <span class="info-value" id="configLeverage">{{ config.leverage }}x</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">仓位比例:</span>
+                            <span class="info-value" id="configPositionRatio">{{ (config.position_ratio * 100)|int }}%</span>
                         </div>
                     </div>
-                    
-                    <!-- 交易日志 -->
-                    <div class="trading-logs">
-                        <div class="logs-header">
+                </div>
 
-                            <button class="btn-clear" onclick="clearTradingLogs()">清空</button>
-                        </div>
+                <!-- 交易状态日志 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">📋</div>
+                        <div class="card-title">交易状态日志</div>
+                    </div>
+                    <div class="trading-logs">
                         <div class="logs-content" id="tradingLogs">
                             <div class="log-item">等待策略启动...</div>
                         </div>
                     </div>
-                    
-
                 </div>
             </div>
 
@@ -1051,19 +1039,19 @@
 
             container.innerHTML = `
                 <div class="info-item">
-                    <span class="info-label">总钱包余额</span>
+                    <span class="info-label">总钱包余额:</span>
                     <span class="info-value">${formatNumber(data.total_wallet_balance, 4)} USDT</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">总未实现盈亏</span>
+                    <span class="info-label">总未实现盈亏:</span>
                     <span class="info-value ${data.total_unrealized_pnl >= 0 ? 'positive' : 'negative'}">${formatNumber(data.total_unrealized_pnl, 4)} USDT</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">总保证金余额</span>
+                    <span class="info-label">总保证金余额:</span>
                     <span class="info-value">${formatNumber(data.total_margin_balance, 4)} USDT</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">可用余额</span>
+                    <span class="info-label">可用余额:</span>
                     <span class="info-value">${formatNumber(data.available_balance, 4)} USDT</span>
                 </div>
             `;
@@ -1171,7 +1159,7 @@
                 priceElement.classList.add('updating');
                 setTimeout(() => priceElement.classList.remove('updating'), 300);
                 
-                priceElement.textContent = `合约价格: ${formatNumber(price, 2)}`;
+                priceElement.textContent = `合约实时价格: ${formatNumber(price, 2)}`;
                 console.log('合约价格已更新:', price);
             }
         }
@@ -1278,10 +1266,10 @@
 
             data.forEach(position => {
                 const unrealizedPnl = formatNumber(position.unrealized_pnl, 4);
-                const percentage = formatNumber(position.percentage, 2);
-                const entryPrice = formatNumber(position.entry_price, 4);
-                const markPrice = formatNumber(position.mark_price, 4);
-                const positionAmt = formatNumber(position.position_amt, 6);
+                const percentage = formatNumber(position.percentage, 3);
+                const entryPrice = formatNumber(position.entry_price, 2);
+                const markPrice = formatNumber(position.mark_price, 2);
+                const positionAmt = formatNumber(position.position_amt, 4);
                 
                 html += `
                     <tr>
