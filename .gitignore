@@ -4,7 +4,7 @@ Thumbs.db
 chrome/
 chrome_driver/
 chrome_driver
-chrome
+chrome/*
 
 # Python
 __pycache__/
