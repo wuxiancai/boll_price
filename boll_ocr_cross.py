@@ -6,7 +6,6 @@ from PIL import Image, ImageGrab
 import re
 import os
 import platform
-import csv
 from datetime import datetime
 import random
 import psutil
@@ -511,24 +510,8 @@ def validate_and_format_boll_values(result):
             formatted_result[key] = "N/A"
     
     return formatted_result
-
-
-def save_to_csv(result, csv_file="boll_log.csv"):
-    """
-    保存结果到 CSV 文件，确保数值格式一致性
-    """
-    file_exists = os.path.isfile(csv_file)
-    with open(csv_file, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["time", "UP", "MB", "DN"])
-        if "error" not in result:
-            # 验证和格式化数值
-            formatted_result = validate_and_format_boll_values(result)
-            writer.writerow([
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                formatted_result["UP"], formatted_result["MB"], formatted_result["DN"]
-            ])
+    
+# 不用保存到 CSV 文件，直接通过 WebSocket 广播
 
 
 async def handle_websocket_client(websocket, path):
@@ -779,9 +762,6 @@ def main():
         try:
             result = extract_boll_values(screenshot)
             print("📷 识别结果:", result)
-            
-            # 保存到CSV
-            save_to_csv(result)
             
             # 通过WebSocket广播BOLL数据
             if "error" not in result:
