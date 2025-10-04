@@ -241,6 +241,14 @@
             text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
         }
 
+        .status.warning {
+            background: linear-gradient(135deg, 
+                rgba(255, 243, 205, 0.8) 0%, 
+                rgba(255, 243, 205, 0.6) 100%);
+            color: #856404;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+
         .content {
             padding: 5px;
         }
@@ -798,7 +806,7 @@
                                 <span class="boll-value" id="bollDn">--</span>
                             </div>
                         </div>
-                        <div class="real-time-price" id="realTimePrice">合约实时价格: --</div>
+                        <div class="real-time-price" id="realTimePrice">实时价格: --</div>
                     </div>
                 </div>
             </div>
@@ -882,33 +890,14 @@
 
             <!-- K线图 -->
             <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">K线图 (BTCUSDT 15分钟)</div>
-                    <div class="card-controls">
-                        <select id="symbolSelect" style="margin-right: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
-                            <option value="BTCUSDT">BTCUSDT</option>
-                            <option value="ETHUSDT">ETHUSDT</option>
-                            <option value="BNBUSDT">BNBUSDT</option>
-                        </select>
-                        <select id="intervalSelect" style="margin-right: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
-                            <option value="15m">15分钟</option>
-                            <option value="1h">1小时</option>
-                            <option value="4h">4小时</option>
-                            <option value="1d">1天</option>
-                        </select>
-                        <button onclick="refreshKlineChart()" style="padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">刷新</button>
-                    </div>
-                </div>
+                
                 <div id="klineChart" style="height: 500px; position: relative;">
                     <div id="klinePlot" style="width: 100%; height: 100%;"></div>
                     <div class="loading" id="klineLoading">正在加载K线数据...</div>
                 </div>
             </div>
 
-            <div class="last-update" id="lastUpdate">
-                最后更新时间: --
-            </div>
+            
         </div>
     </div>
 
@@ -920,9 +909,10 @@
         let refreshInterval;
         let isRefreshing = false;
         let refreshCount = 0;
+        let autoRefreshStarted = false; // 防止重复启动
         const MAX_REFRESH_INTERVAL = 30000; // 最大刷新间隔30秒
-        const MIN_REFRESH_INTERVAL = 5000;  // 最小刷新间隔5秒
-        const NORMAL_REFRESH_INTERVAL = 5000; // 正常刷新间隔5秒
+        const MIN_REFRESH_INTERVAL = 10000;  // 最小刷新间隔10秒
+        const NORMAL_REFRESH_INTERVAL = 10000; // 正常刷新间隔10秒
 
         // 智能刷新函数
         function smartRefresh() {
@@ -942,6 +932,11 @@
 
         // 启动自动刷新
         function startAutoRefresh() {
+            // 防止重复启动
+            if (autoRefreshStarted) {
+                return;
+            }
+            
             // 清除现有的定时器
             if (refreshInterval) {
                 clearInterval(refreshInterval);
@@ -949,6 +944,7 @@
             
             // 根据币安API建议，合约数据可以更频繁刷新
             refreshInterval = setInterval(smartRefresh, NORMAL_REFRESH_INTERVAL);
+            autoRefreshStarted = true;
         }
 
         // 停止自动刷新
@@ -957,6 +953,7 @@
                 clearInterval(refreshInterval);
                 refreshInterval = null;
             }
+            autoRefreshStarted = false;
         }
 
         // 页面加载完成后初始化
@@ -984,43 +981,91 @@
         async function refreshData() {
             updateConnectionStatus('🔄 正在刷新...', 'offline');
             
+            let successCount = 0;
+            const errors = [];
+            
+            // 串行请求，避免并发限制
             try {
-                // 并行获取所有数据
-                const [accountInfo, positions, trades, income] = await Promise.all([
-                    fetchData('/api/account/info'),
-                    fetchData('/api/account/positions'),
-                    fetchData('/api/account/trades'),
-                    fetchData('/api/account/income')
-                ]);
-
-                // 更新各个部分
+                const accountInfo = await fetchData('/api/account/info');
                 updateAccountInfo(accountInfo);
-                updatePositions(positions);
-                updateRecentTrades(trades);
-                updateIncomeHistory(income);
-
-                updateConnectionStatus('✅ 连接正常', 'online');
-                updateLastUpdateTime();
-                
-                return true; // 返回成功状态
+                successCount++;
             } catch (error) {
-                console.error('刷新数据失败:', error);
-                updateConnectionStatus('❌ 连接失败', 'offline');
-                throw error; // 重新抛出错误以便上层处理
+                console.warn('获取账户信息失败:', error);
+                errors.push('账户信息');
             }
+            
+            try {
+                const positions = await fetchData('/api/account/positions');
+                updatePositions(positions);
+                successCount++;
+            } catch (error) {
+                console.warn('获取持仓信息失败:', error);
+                errors.push('持仓信息');
+            }
+            
+            try {
+                const trades = await fetchData('/api/account/trades');
+                updateRecentTrades(trades);
+                successCount++;
+            } catch (error) {
+                console.warn('获取交易记录失败:', error);
+                errors.push('交易记录');
+            }
+            
+            try {
+                const income = await fetchData('/api/account/income');
+                updateIncomeHistory(income);
+                successCount++;
+            } catch (error) {
+                console.warn('获取收益历史失败:', error);
+                errors.push('收益历史');
+            }
+
+            // 根据成功的请求数量更新连接状态
+            if (successCount >= 3) {
+                updateConnectionStatus('✅ 连接正常', 'online');
+            } else if (successCount >= 1) {
+                updateConnectionStatus(`⚠️ 部分连接 (${errors.join(', ')}失败)`, 'warning');
+            } else {
+                updateConnectionStatus('❌ 连接失败', 'offline');
+            }
+            
+            updateLastUpdateTime();
+            
+            return successCount > 0; // 只要有一个成功就返回true
         }
 
         // 获取数据的通用函数
-        async function fetchData(url) {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        async function fetchData(url, timeout = 15000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || '获取数据失败');
+                }
+                return data.data;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error(`请求超时: ${url}`);
+                }
+                throw error;
             }
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error(data.error || '获取数据失败');
-            }
-            return data.data;
         }
 
         // 更新连接状态
@@ -1473,7 +1518,26 @@
         /**
          * 获取K线数据
          */
-        async function fetchKlineData(symbol = 'BTCUSDT', interval = '15m', limit = 50) {
+        /**
+         * 获取当前交易配置
+         */
+        async function fetchTradingConfig() {
+            try {
+                const response = await fetch('/api/trading/config/current');
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data.data;
+                } else {
+                    throw new Error(data.message || '获取配置失败');
+                }
+            } catch (error) {
+                console.error('获取交易配置错误:', error);
+                throw error;
+            }
+        }
+
+        async function fetchKlineData(symbol = 'BTCUSDT', interval = '15m', limit = 100) {
             try {
                 const response = await fetch(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
                 const data = await response.json();
@@ -1492,7 +1556,7 @@
         /**
          * 创建K线图 - 使用Plotly.js绘制蜡烛图
          */
-        function createKlineChart(klineData) {
+        function createKlineChart(klineData, symbol = 'BTCUSDT', interval = '15m') {
             // 检查Plotly.js是否可用
             if (typeof Plotly === 'undefined') {
                 console.error('Plotly.js库未加载');
@@ -1519,56 +1583,73 @@
                               '<extra></extra>'
             };
 
-            // 准备BOLL线数据 - 保持完整的时间序列
+            // 准备BOLL线数据 - 过滤null值，确保BOLL线从有效数据开始
             const traces = [candlestickData];
             const timeAxis = klineData.klines.map(k => new Date(k.timestamp));
             
-            // BOLL上轨 - 保持完整时间序列，null值会自动断开线条
+            // 过滤BOLL数据，移除null值
+            function filterBollData(bollArray, timeArray) {
+                const filtered = {x: [], y: []};
+                for (let i = 0; i < bollArray.length; i++) {
+                    if (bollArray[i] !== null && bollArray[i] !== undefined) {
+                        filtered.x.push(timeArray[i]);
+                        filtered.y.push(bollArray[i]);
+                    }
+                }
+                return filtered;
+            }
+            
+            // BOLL上轨 - 过滤null值
             if (klineData.boll.upper && klineData.boll.upper.length > 0) {
-                traces.push({
-                    x: timeAxis,
-                    y: klineData.boll.upper,
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'BOLL上轨',
-                    line: {color: '#ff6b6b', width: 1.5},
-                    connectgaps: false,
-                    hovertemplate: '<b>BOLL上轨</b>: %{y:.2f}<br><extra></extra>'
-                });
+                const upperData = filterBollData(klineData.boll.upper, timeAxis);
+                if (upperData.x.length > 0) {
+                    traces.push({
+                        x: upperData.x,
+                        y: upperData.y,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'BOLL上轨',
+                        line: {color: '#ff6b6b', width: 1.5},
+                        connectgaps: false,
+                        hovertemplate: '<b>BOLL上轨</b>: %{y:.2f}<br><extra></extra>'
+                    });
+                }
             }
             
-            // BOLL中轨
+            // BOLL中轨 - 过滤null值
             if (klineData.boll.middle && klineData.boll.middle.length > 0) {
-                traces.push({
-                    x: timeAxis,
-                    y: klineData.boll.middle,
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'BOLL中轨',
-                    line: {color: '#4ecdc4', width: 1.5},
-                    connectgaps: false,
-                    hovertemplate: '<b>BOLL中轨</b>: %{y:.2f}<br><extra></extra>'
-                });
+                const middleData = filterBollData(klineData.boll.middle, timeAxis);
+                if (middleData.x.length > 0) {
+                    traces.push({
+                        x: middleData.x,
+                        y: middleData.y,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'BOLL中轨',
+                        line: {color: '#4ecdc4', width: 1.5},
+                        connectgaps: false,
+                        hovertemplate: '<b>BOLL中轨</b>: %{y:.2f}<br><extra></extra>'
+                    });
+                }
             }
             
-            // BOLL下轨
+            // BOLL下轨 - 过滤null值
             if (klineData.boll.lower && klineData.boll.lower.length > 0) {
-                traces.push({
-                    x: timeAxis,
-                    y: klineData.boll.lower,
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'BOLL下轨',
-                    line: {color: '#45b7d1', width: 1.5},
-                    connectgaps: false,
-                    hovertemplate: '<b>BOLL下轨</b>: %{y:.2f}<br><extra></extra>'
-                });
+                const lowerData = filterBollData(klineData.boll.lower, timeAxis);
+                if (lowerData.x.length > 0) {
+                    traces.push({
+                        x: lowerData.x,
+                        y: lowerData.y,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'BOLL下轨',
+                        line: {color: '#45b7d1', width: 1.5},
+                        connectgaps: false,
+                        hovertemplate: '<b>BOLL下轨</b>: %{y:.2f}<br><extra></extra>'
+                    });
+                }
             }
 
-            // 获取当前选择的交易对和时间间隔
-            const symbol = document.getElementById('symbolSelect').value;
-            const interval = document.getElementById('intervalSelect').value;
-            
             // 图表布局配置
             const layout = {
                 title: {
@@ -1581,7 +1662,13 @@
                     rangeslider: {visible: false},
                     showgrid: true,
                     gridcolor: '#f0f0f0',
-                    tickformat: '%H:%M\n%m-%d'
+                    tickformat: '%H:%M\n%m-%d',
+                    // 默认显示最近50根K线
+                    range: klineData.klines.length > 50 ? 
+                        [klineData.klines[klineData.klines.length - 50].timestamp, 
+                         klineData.klines[klineData.klines.length - 1].timestamp] : 
+                        [klineData.klines[0].timestamp, 
+                         klineData.klines[klineData.klines.length - 1].timestamp]
                 },
                 yaxis: {
                     title: '价格 (USDT)',
@@ -1633,16 +1720,19 @@
          * 刷新K线图
          */
         async function refreshKlineChart() {
-            const symbol = document.getElementById('symbolSelect').value;
-            const interval = document.getElementById('intervalSelect').value;
             const loading = document.getElementById('klineLoading');
             
             try {
                 loading.style.display = 'block';
                 
-                // 获取50根K线数据
-                const klineData = await fetchKlineData(symbol, interval, 50);
-                createKlineChart(klineData);
+                // 从配置获取币对和时间间隔
+                const config = await fetchTradingConfig();
+                const symbol = config.symbol;
+                const interval = config.interval;
+                
+                // 获取100根K线数据
+                const klineData = await fetchKlineData(symbol, interval, 100);
+                createKlineChart(klineData, symbol, interval);
                 
                 // 更新图表标题
                 const intervalText = {
@@ -1652,8 +1742,10 @@
                     '1d': '1天'
                 };
                 
+                // 页面标题已删除，无需更新
+                
                 // 更新Plotly图表标题
-                const newTitle = `K线图 (${symbol} ${intervalText[interval]})`;
+                const newTitle = `K线图 (${symbol} ${intervalText[interval] || interval})`;
                 Plotly.relayout('klinePlot', {
                     'title.text': newTitle
                 });

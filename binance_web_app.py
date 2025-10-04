@@ -26,7 +26,17 @@ logging.getLogger('werkzeug').setLevel(logging.WARNING)
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
 
-# 全局客户端实例
+# 添加请求日志中间件
+@app.before_request
+def log_request_info():
+    logger.info(f"收到请求: {request.method} {request.url} - 来源: {request.remote_addr}")
+
+@app.after_request
+def log_response_info(response):
+    logger.info(f"响应: {response.status_code} - {request.method} {request.url}")
+    return response
+
+# 全局变量
 binance_client = None
 
 def check_port_in_use(port):
@@ -590,6 +600,30 @@ def clear_trading_logs():
         return jsonify({
             'success': False,
             'message': f'清空日志失败: {str(e)}'
+        })
+
+@app.route('/api/trading/config/current', methods=['GET'])
+def get_current_trading_config():
+    """
+    获取当前交易配置（币对、时间间隔等）
+    """
+    try:
+        config = get_trading_config()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'symbol': config.get('symbol', 'BTCUSDT'),
+                'interval': config.get('interval', '15m'),
+                'leverage': config.get('leverage', 10),
+                'position_ratio': config.get('position_ratio', 0.7)
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'获取配置失败: {str(e)}'
         })
 
 
