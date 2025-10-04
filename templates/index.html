@@ -30,13 +30,13 @@
         .header {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            padding: 30px;
+            padding: 8px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            margin-bottom: 1px;
             font-weight: 700;
         }
 
@@ -275,8 +275,8 @@
                 <button onclick="manualRefresh()" class="btn" id="manualRefreshBtn">🔄 手动刷新</button>
                 <button onclick="toggleAutoRefresh()" class="btn" id="autoRefreshBtn">⏸️ 关闭自动刷新</button>
                 <select id="refreshInterval" onchange="changeRefreshInterval()" class="btn" style="margin-left: 10px;">
-                    <option value="5000">5秒刷新</option>
-                    <option value="10000" selected>10秒刷新</option>
+                    <option value="5000" selected>5秒刷新</option>
+                    <option value="10000">10秒刷新</option>
                     <option value="15000">15秒刷新</option>
                     <option value="30000">30秒刷新</option>
                 </select>
@@ -319,17 +319,6 @@
                 </div>
             </div>
 
-            <!-- 当前挂单 -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📋</div>
-                    <div class="card-title">当前挂单</div>
-                </div>
-                <div id="openOrders">
-                    <div class="loading">正在加载挂单信息...</div>
-                </div>
-            </div>
-
             <!-- 最近交易 -->
             <div class="card">
                 <div class="card-header">
@@ -341,16 +330,7 @@
                 </div>
             </div>
 
-            <!-- 市场行情 -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">合约市场行情</div>
-                </div>
-                <div id="marketTickers">
-                    <div class="loading">正在加载市场数据...</div>
-                </div>
-            </div>
+
 
             <!-- 收益历史 -->
             <div class="card">
@@ -379,7 +359,7 @@
         let refreshCount = 0;
         const MAX_REFRESH_INTERVAL = 30000; // 最大刷新间隔30秒
         const MIN_REFRESH_INTERVAL = 5000;  // 最小刷新间隔5秒
-        const NORMAL_REFRESH_INTERVAL = 10000; // 正常刷新间隔10秒
+        const NORMAL_REFRESH_INTERVAL = 5000; // 正常刷新间隔5秒
 
         // 智能刷新函数
         function smartRefresh() {
@@ -388,22 +368,12 @@
             isRefreshing = true;
             refreshCount++;
             
-            // 更新状态显示
-            const statusElement = document.querySelector('.status-indicator');
-            if (statusElement) {
-                statusElement.textContent = `刷新中... (${refreshCount})`;
-                statusElement.style.color = '#ffa500';
-            }
+            
             
             refreshData().finally(() => {
                 isRefreshing = false;
                 
-                // 更新状态显示
-                if (statusElement) {
-                    const now = new Date();
-                    statusElement.textContent = `最后更新: ${now.toLocaleTimeString()}`;
-                    statusElement.style.color = '#28a745';
-                }
+                
             });
         }
 
@@ -428,13 +398,7 @@
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 添加状态指示器
-            const header = document.querySelector('h1');
-            if (header) {
-                const statusDiv = document.createElement('div');
-                statusDiv.innerHTML = '<small class="status-indicator" style="color: #6c757d;">正在加载...</small>';
-                header.appendChild(statusDiv);
-            }
+            
             
             // 初始加载数据
             smartRefresh();
@@ -459,13 +423,11 @@
             
             try {
                 // 并行获取所有数据
-                const [accountInfo, balances, positions, orders, trades, tickers, income] = await Promise.all([
+                const [accountInfo, balances, positions, trades, income] = await Promise.all([
                     fetchData('/api/account/info'),
                     fetchData('/api/account/balances'),
                     fetchData('/api/account/positions'),
-                    fetchData('/api/account/orders'),
                     fetchData('/api/account/trades'),
-                    fetchData('/api/market/tickers'),
                     fetchData('/api/account/income')
                 ]);
 
@@ -473,9 +435,7 @@
                 updateAccountInfo(accountInfo);
                 updateBalances(balances);
                 updatePositions(positions);
-                updateOpenOrders(orders);
                 updateRecentTrades(trades);
-                updateMarketTickers(tickers);
                 updateIncomeHistory(income);
 
                 updateConnectionStatus('✅ 连接正常', 'online');
@@ -533,14 +493,6 @@
                 <div class="info-item">
                     <span class="info-label">可用余额</span>
                     <span class="info-value">${formatNumber(data.available_balance, 4)} USDT</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">可交易</span>
-                    <span class="info-value ${data.can_trade ? 'positive' : 'negative'}">${data.can_trade ? '是' : '否'}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">可提现</span>
-                    <span class="info-value ${data.can_withdraw ? 'positive' : 'negative'}">${data.can_withdraw ? '是' : '否'}</span>
                 </div>
             `;
         }
@@ -630,53 +582,28 @@
             container.innerHTML = html;
         }
 
-        // 更新挂单信息
-        function updateOpenOrders(data) {
-            const container = document.getElementById('openOrders');
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="info-item"><span class="info-label">当前无挂单</span></div>';
-                return;
-            }
 
-            let html = '<div class="table-container"><table class="table">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>交易对</th>
-                        <th>方向</th>
-                        <th>类型</th>
-                        <th>数量</th>
-                        <th>价格</th>
-                        <th>状态</th>
-                        <th>时间</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-
-            data.forEach(order => {
-                html += `
-                    <tr>
-                        <td><strong>${order.symbol}</strong></td>
-                        <td class="${order.side === 'BUY' ? 'positive' : 'negative'}">${order.side}</td>
-                        <td>${order.type}</td>
-                        <td>${order.quantity}</td>
-                        <td>${order.price}</td>
-                        <td>${order.status}</td>
-                        <td>${order.time}</td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
 
         // 更新交易记录
         function updateRecentTrades(data) {
             const container = document.getElementById('recentTrades');
             if (!data || data.length === 0) {
                 container.innerHTML = '<div class="info-item"><span class="info-label">暂无交易记录</span></div>';
+                return;
+            }
+
+            // 获取今天的日期（YYYY-MM-DD格式）
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 过滤只显示今天的交易记录
+            const todayTrades = data.filter(trade => {
+                // 假设trade.time是时间戳或日期字符串
+                const tradeDate = new Date(trade.time).toISOString().split('T')[0];
+                return tradeDate === today;
+            });
+
+            if (todayTrades.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">今日暂无交易记录</span></div>';
                 return;
             }
 
@@ -696,7 +623,7 @@
                 <tbody>
             `;
 
-            data.forEach(trade => {
+            todayTrades.forEach(trade => {
                 html += `
                     <tr>
                         <td><strong>${trade.symbol}</strong></td>
@@ -716,57 +643,33 @@
             container.innerHTML = html;
         }
 
-        // 更新市场行情
-        function updateMarketTickers(data) {
-            const container = document.getElementById('marketTickers');
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="info-item"><span class="info-label">暂无行情数据</span></div>';
-                return;
-            }
 
-            let html = '<div class="table-container"><table class="table">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>交易对</th>
-                        <th>最新价格</th>
-                        <th>24h涨跌</th>
-                        <th>24h涨跌幅</th>
-                        <th>24h最高</th>
-                        <th>24h最低</th>
-                        <th>24h成交量</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-
-            data.forEach(ticker => {
-                html += `
-                    <tr>
-                        <td><strong>${ticker.symbol}</strong></td>
-                        <td>${formatNumber(ticker.price, 4)}</td>
-                        <td class="${ticker.price_change >= 0 ? 'positive' : 'negative'}">
-                            ${formatNumber(ticker.price_change, 4)}
-                        </td>
-                        <td class="${ticker.price_change_percent >= 0 ? 'positive' : 'negative'}">
-                            ${formatNumber(ticker.price_change_percent, 2)}%
-                        </td>
-                        <td>${formatNumber(ticker.high_price, 4)}</td>
-                        <td>${formatNumber(ticker.low_price, 4)}</td>
-                        <td>${formatNumber(ticker.volume, 0)}</td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
 
         // 更新收益历史
         function updateIncomeHistory(data) {
             const container = document.getElementById('incomeHistory');
             if (!data || data.length === 0) {
                 container.innerHTML = '<div class="info-item"><span class="info-label">暂无收益记录</span></div>';
+                return;
+            }
+
+            // 获取今天的日期（YYYY-MM-DD格式）
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 过滤只显示今天的收益记录
+            const todayIncome = data.filter(income => {
+                // 假设income.time是时间戳或日期字符串
+                const incomeDate = new Date(income.time).toISOString().split('T')[0];
+                return incomeDate === today;
+            });
+
+            // 按时间降序排序（最新的在前面）
+            todayIncome.sort((a, b) => {
+                return new Date(b.time) - new Date(a.time);
+            });
+
+            if (todayIncome.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">今日暂无收益记录</span></div>';
                 return;
             }
 
@@ -784,7 +687,7 @@
                 <tbody>
             `;
 
-            data.forEach(income => {
+            todayIncome.forEach(income => {
                 html += `
                     <tr>
                         <td><strong>${income.symbol || '--'}</strong></td>
@@ -850,12 +753,7 @@
             const timeString = now.toLocaleString('zh-CN');
             document.getElementById('lastUpdate').textContent = `最后更新时间: ${timeString}`;
             
-            // 同时更新状态指示器
-            const statusElement = document.querySelector('.status-indicator');
-            if (statusElement && !isRefreshing) {
-                statusElement.textContent = `最后更新: ${now.toLocaleTimeString()}`;
-                statusElement.style.color = '#28a745';
-            }
+            
         }
     </script>
 </body>
