@@ -687,20 +687,21 @@
         }
 
         .logs-content {
-            max-height: 200px;
+            max-height: 280px;
             overflow-y: auto;
             background: transparent;
             border-radius: 6px;
-            padding: 10px;
+            padding: 8px;
         }
 
         .log-item {
             font-size: 12px;
-            margin-bottom: 5px;
-            padding: 5px 8px;
+            margin-bottom: 2px;
+            padding: 3px 6px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: 3px;
             border-left: 3px solid #007bff;
+            line-height: 1.2;
         }
 
         .log-item.success {
@@ -1912,7 +1913,10 @@
             
             logsContent.innerHTML = '';
             
-            logs.forEach(log => {
+            // 倒序显示日志，最新的在前面
+            const reversedLogs = [...logs].reverse();
+            
+            reversedLogs.forEach(log => {
                 const logItem = document.createElement('div');
                 logItem.className = `log-item ${log.type}`;
                 

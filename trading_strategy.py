@@ -82,7 +82,6 @@ class TradingEngine:
         self.trading_logs = []
         self.max_logs = 100
         
-
         
         # 交易参数（从配置文件读取）
         self.position_ratio = self.trading_config['position_ratio']  # 开仓金额比例（70%）
@@ -95,14 +94,81 @@ class TradingEngine:
         
         logger.info(f"交易引擎初始化完成: {symbol} {interval}")
         self.add_log(f"交易引擎初始化完成: {symbol} {interval}", "info")
+        
+        # 启动时检测持仓状态
+        self.check_startup_position()
+    
+    def check_startup_position(self):
+        """
+        启动时检测当前持仓状态并记录到交易状态日志
+        """
+        try:
+            logger.info("🔍 正在检测启动时的持仓状态...")
+            self.add_log("🔍 正在检测启动时的持仓状态...", "info")
+            
+            # 获取当前持仓信息
+            position_info = self.client.get_position_info(self.symbol)
+            
+            if position_info and position_info.get('position_amt', 0) != 0:
+                position_amt = float(position_info['position_amt'])
+                entry_price = float(position_info['entry_price'])
+                unrealized_pnl = float(position_info.get('unrealized_pnl', 0))
+                
+                # 确定持仓方向
+                if position_amt > 0:
+                    self.position_side = PositionSide.LONG
+                    self.current_state = TradingState.HOLDING_LONG
+                    position_msg = f"📈 检测到现有持仓: LONG {abs(position_amt):.4f} {self.symbol}"
+                elif position_amt < 0:
+                    self.position_side = PositionSide.SHORT
+                    self.current_state = TradingState.HOLDING_SHORT
+                    position_msg = f"📉 检测到现有持仓: SHORT {abs(position_amt):.4f} {self.symbol}"
+                
+                self.position_size = abs(position_amt)
+                self.entry_price = entry_price
+                
+                # 记录详细持仓信息
+                detail_msg = f"   ├─ 入场价格: {entry_price:.4f} USDT"
+                pnl_msg = f"   ├─ 未实现盈亏: {unrealized_pnl:.4f} USDT"
+                state_msg = f"   └─ 当前状态: {self.current_state.value}"
+                
+                logger.info(position_msg)
+                self.add_log(position_msg, "success")
+                self.add_log(detail_msg, "info")
+                self.add_log(pnl_msg, "info" if unrealized_pnl >= 0 else "warning")
+                self.add_log(state_msg, "info")
+                
+            else:
+                # 无持仓
+                self.position_side = PositionSide.NONE
+                self.current_state = TradingState.WAITING
+                self.position_size = 0.0
+                self.entry_price = 0.0
+                
+                no_position_msg = f"🔄 当前无持仓，等待开仓机会"
+                state_msg = f"   └─ 当前状态: {self.current_state.value}"
+                
+                logger.info(no_position_msg)
+                self.add_log(no_position_msg, "info")
+                self.add_log(state_msg, "info")
+                
+        except Exception as e:
+            error_msg = f"❌ 检测启动持仓状态失败: {e}"
+            logger.error(error_msg)
+            self.add_log(error_msg, "error")
+            
+            # 默认设置为等待状态
+            self.position_side = PositionSide.NONE
+            self.current_state = TradingState.WAITING
+            self.add_log("⚠️ 使用默认状态: 等待开仓", "warning")
     
     def set_callbacks(self, state_change_callback: Callable = None, trade_callback: Callable = None):
         """
         设置回调函数
         
         Args:
-            state_change_callback: 状态变化回调
-            trade_callback: 交易执行回调
+            state_change_callback: 状态变化回调函数
+            trade_callback: 交易回调函数
         """
         self.state_change_callback = state_change_callback
         self.trade_callback = trade_callback
@@ -113,19 +179,19 @@ class TradingEngine:
         
         Args:
             message: 日志消息
-            log_type: 日志类型 (info, success, warning, error)
+            log_type: 日志类型 (info, warning, error, success)
         """
         log_entry = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now(),
             'message': message,
             'type': log_type
         }
         
-        self.trading_logs.insert(0, log_entry)  # 插入到开头
+        self.trading_logs.append(log_entry)
         
-        # 限制日志数量
+        # 保持日志数量在限制内
         if len(self.trading_logs) > self.max_logs:
-            self.trading_logs = self.trading_logs[:self.max_logs]
+            self.trading_logs = self.trading_logs[-self.max_logs:]
     
     def get_logs(self) -> list:
         """
@@ -141,45 +207,51 @@ class TradingEngine:
         清空交易日志
         """
         self.trading_logs.clear()
-        self.add_log("日志已清空", "info")
+        logger.info("交易日志已清空")
     
 
     
     def calculate_safe_position_size(self, current_price):
         """
         计算安全的仓位大小
-        基于配置的开仓金额比例（70%）
-        参数:
+        
+        Args:
             current_price: 当前价格
-        返回:
-            float: 安全的仓位大小
+            
+        Returns:
+            安全的仓位大小
         """
         try:
             # 获取账户余额
-            account_info = self.client.get_futures_account_info()
-            if not account_info:
-                self.add_log("无法获取账户余额信息", "error")
-                return 0
+            balance_info = self.client.get_futures_account_balance()
+            if not balance_info:
+                logger.warning("无法获取账户余额信息")
+                return 0.0
             
-            total_balance = float(account_info.get('totalWalletBalance', 0))
+            # 获取USDT余额
+            usdt_balance = 0.0
+            for asset in balance_info:
+                if asset['asset'] == 'USDT':
+                    usdt_balance = float(asset['balance'])
+                    break
             
-            # 计算开仓金额（总余额的70%）
-            position_value = total_balance * self.position_ratio
+            if usdt_balance <= 0:
+                logger.warning("USDT余额不足")
+                return 0.0
             
-            # 计算对应的数量（考虑杠杆）
-            safe_quantity = position_value / current_price
+            # 计算开仓金额（余额的指定比例）
+            position_value = usdt_balance * self.position_ratio
             
-            # 确保数量符合交易所的最小交易单位要求
-            # 这里简化处理，实际应该根据交易对的具体要求调整
-            safe_quantity = round(safe_quantity, 3)
+            # 计算数量（考虑杠杆）
+            quantity = (position_value * self.leverage) / current_price
             
-            self.add_log(f"计算安全仓位: 总余额={total_balance}, 开仓比例={self.position_ratio}, 安全数量={safe_quantity}", "info")
+            logger.info(f"计算仓位: 余额={usdt_balance:.2f} USDT, 开仓比例={self.position_ratio*100}%, 杠杆={self.leverage}X, 数量={quantity:.6f}")
             
-            return safe_quantity
+            return quantity
             
         except Exception as e:
-            self.add_log(f"计算安全仓位大小失败: {str(e)}", "error")
-            return 0
+            logger.error(f"计算安全仓位大小错误: {e}")
+            return 0.0
     
 
     
@@ -422,15 +494,22 @@ class TradingEngine:
         try:
             close_price = self.last_close_price
             
+            # 记录BOLL突破事件
+            self.check_boll_breakthrough(close_price)
+            
             # 根据当前状态执行相应逻辑
             if self.current_state == TradingState.WAITING:
                 # 等待开仓状态：监控价格突破UP
                 if close_price > self.boll_up:
+                    breakthrough_msg = f"📈 价格突破BOLL上轨: {close_price:.4f} > {self.boll_up:.4f}"
+                    self.add_log(breakthrough_msg, "warning")
                     self.change_state(TradingState.BREAKTHROUGH_UP_WAITING, "K线收盘到BOLL UP之上")
             
             elif self.current_state == TradingState.BREAKTHROUGH_UP_WAITING:
                 # 突破UP等待状态：等待跌破UP开SHORT
                 if close_price < self.boll_up:
+                    fallback_msg = f"📉 价格跌破BOLL上轨: {close_price:.4f} < {self.boll_up:.4f}"
+                    self.add_log(fallback_msg, "warning")
                     self.execute_trade("SELL", "开仓", "收盘价格跌破UP")
                     self.change_state(TradingState.HOLDING_SHORT, "开SHORT成功")
             
@@ -438,15 +517,21 @@ class TradingEngine:
                 # 持仓SHORT状态
                 if close_price > self.boll_up:
                     # 情况A: 价格重新突破UP，止损
+                    breakthrough_again_msg = f"⚠️ 价格重新突破BOLL上轨: {close_price:.4f} > {self.boll_up:.4f}"
+                    self.add_log(breakthrough_again_msg, "error")
                     self.execute_trade("BUY", "止损", "K线价格收盘到UP之上")
                     self.change_state(TradingState.BREAKTHROUGH_UP_AGAIN_WAITING, "再次突破UP，已止损SHORT")
                 elif close_price < self.boll_mb:
                     # 情况B: 价格跌破中轨
+                    below_mb_msg = f"📉 价格跌破BOLL中轨: {close_price:.4f} < {self.boll_mb:.4f}"
+                    self.add_log(below_mb_msg, "success")
                     self.change_state(TradingState.BELOW_MB_WAITING, "K线收盘价格跌破BOLL中轨")
             
             elif self.current_state == TradingState.BREAKTHROUGH_UP_AGAIN_WAITING:
                 # 再次突破UP后等待状态
                 if close_price < self.boll_up:
+                    fallback_again_msg = f"📉 价格再次跌破BOLL上轨: {close_price:.4f} < {self.boll_up:.4f}"
+                    self.add_log(fallback_again_msg, "warning")
                     self.execute_trade("SELL", "开仓", "K线收盘价跌破UP")
                     self.change_state(TradingState.HOLDING_SHORT, "再开SHORT成功")
             
@@ -454,21 +539,29 @@ class TradingEngine:
                 # 跌破中轨等待状态
                 if close_price > self.boll_mb:
                     # 情况1: 突破中轨，止盈SHORT并开LONG
+                    above_mb_msg = f"📈 价格突破BOLL中轨: {close_price:.4f} > {self.boll_mb:.4f}"
+                    self.add_log(above_mb_msg, "success")
                     self.execute_trade("BUY", "止盈", "K线收盘价格突破BOLL中轨")
                     self.execute_trade("BUY", "开仓", "立即开LONG")
                     self.change_state(TradingState.HOLDING_LONG, "已止盈SHORT，持有LONG")
                 elif close_price < self.boll_dn:
                     # 情况2: 跌破DN
+                    below_dn_msg = f"📉 价格跌破BOLL下轨: {close_price:.4f} < {self.boll_dn:.4f}"
+                    self.add_log(below_dn_msg, "warning")
                     self.change_state(TradingState.BELOW_DN_WAITING, "K线收盘价格跌破DN")
             
             elif self.current_state == TradingState.HOLDING_LONG:
                 # 持仓LONG状态
                 if close_price < self.boll_mb:
                     # 收盘价跌破中轨，止损
+                    below_mb_long_msg = f"⚠️ 价格跌破BOLL中轨: {close_price:.4f} < {self.boll_mb:.4f}"
+                    self.add_log(below_mb_long_msg, "error")
                     self.execute_trade("SELL", "止损", "收盘价跌破中轨")
                     self.change_state(TradingState.WAITING, "已止损LONG")
                 elif close_price > self.boll_up:
                     # 收盘价突破UP
+                    above_up_long_msg = f"📈 价格突破BOLL上轨: {close_price:.4f} > {self.boll_up:.4f}"
+                    self.add_log(above_up_long_msg, "success")
                     self.change_state(TradingState.BREAKTHROUGH_UP_WAITING, "收盘价格突破UP")
                     self.execute_trade("SELL", "止盈", "收盘价突破UP")
                     self.execute_trade("SELL", "开仓", "立即开SHORT")
@@ -477,6 +570,8 @@ class TradingEngine:
             elif self.current_state == TradingState.BELOW_DN_WAITING:
                 # 跌破DN等待状态
                 if close_price > self.boll_dn:
+                    above_dn_msg = f"📈 价格反弹至BOLL下轨之上: {close_price:.4f} > {self.boll_dn:.4f}"
+                    self.add_log(above_dn_msg, "success")
                     self.execute_trade("BUY", "止盈", "K线收盘价格大于DN")
                     self.execute_trade("BUY", "开仓", "立即开LONG")
                     self.change_state(TradingState.HOLDING_LONG, "持有LONG")
@@ -485,16 +580,59 @@ class TradingEngine:
                 # 突破中轨等待状态
                 if close_price > self.boll_up:
                     # 继续突破UP
+                    continue_up_msg = f"📈 价格继续突破BOLL上轨: {close_price:.4f} > {self.boll_up:.4f}"
+                    self.add_log(continue_up_msg, "warning")
                     self.change_state(TradingState.BREAKTHROUGH_UP_WAITING, "K线收盘价继续突破UP")
                 elif close_price < self.boll_mb:
                     # 跌破中轨，止盈LONG并开SHORT
+                    below_mb_again_msg = f"📉 价格跌破BOLL中轨: {close_price:.4f} < {self.boll_mb:.4f}"
+                    self.add_log(below_mb_again_msg, "success")
                     self.execute_trade("SELL", "止盈", "K线收盘价跌破中轨价格")
                     self.execute_trade("SELL", "开仓", "立即开SHORT")
                     self.change_state(TradingState.HOLDING_SHORT, "已平仓止盈，持有SHORT")
             
         except Exception as e:
-            logger.error(f"处理交易逻辑错误: {e}")
+            error_msg = f"❌ 处理交易逻辑错误: {e}"
+            logger.error(error_msg)
+            self.add_log(error_msg, "error")
     
+    def check_boll_breakthrough(self, current_price: float):
+        """
+        检查BOLL突破事件并记录日志
+        
+        Args:
+            current_price: 当前价格
+        """
+        try:
+            # 检查是否有BOLL数据
+            if self.boll_up == 0 or self.boll_mb == 0 or self.boll_dn == 0:
+                return
+            
+            # 计算价格相对于BOLL轨道的位置
+            if current_price > self.boll_up:
+                position_msg = f"📊 价格位置: 上轨之上 ({current_price:.4f} > {self.boll_up:.4f})"
+                if not hasattr(self, '_last_boll_position') or self._last_boll_position != 'above_up':
+                    self.add_log(position_msg, "warning")
+                    self._last_boll_position = 'above_up'
+            elif current_price < self.boll_dn:
+                position_msg = f"📊 价格位置: 下轨之下 ({current_price:.4f} < {self.boll_dn:.4f})"
+                if not hasattr(self, '_last_boll_position') or self._last_boll_position != 'below_dn':
+                    self.add_log(position_msg, "warning")
+                    self._last_boll_position = 'below_dn'
+            elif self.boll_dn <= current_price <= self.boll_mb:
+                position_msg = f"📊 价格位置: 下轨与中轨之间 ({self.boll_dn:.4f} ≤ {current_price:.4f} ≤ {self.boll_mb:.4f})"
+                if not hasattr(self, '_last_boll_position') or self._last_boll_position != 'between_dn_mb':
+                    self.add_log(position_msg, "info")
+                    self._last_boll_position = 'between_dn_mb'
+            elif self.boll_mb <= current_price <= self.boll_up:
+                position_msg = f"📊 价格位置: 中轨与上轨之间 ({self.boll_mb:.4f} ≤ {current_price:.4f} ≤ {self.boll_up:.4f})"
+                if not hasattr(self, '_last_boll_position') or self._last_boll_position != 'between_mb_up':
+                    self.add_log(position_msg, "info")
+                    self._last_boll_position = 'between_mb_up'
+                    
+        except Exception as e:
+            logger.error(f"检查BOLL突破事件错误: {e}")
+
     def monitoring_loop(self):
         """
         监控循环
@@ -608,7 +746,7 @@ class TradingEngine:
             logger.error(error_msg)
             self.add_log(error_msg, "error")
             return False
-    
+
     def get_status(self) -> Dict:
         """
         获取当前状态信息
