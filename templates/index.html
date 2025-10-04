@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>币安合约账户信息</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+
+        .card-icon {
+            font-size: 24px;
+            margin-right: 12px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .positive {
+            color: #28a745 !important;
+        }
+
+        .negative {
+            color: #dc3545 !important;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 700;
+            color: #495057;
+            position: sticky;
+            top: 0;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 16px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .last-update {
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 币安合约账户信息</h1>
+        </div>
+
+        <div class="controls">
+            <div>
+                <span class="status" id="connectionStatus">🔄 连接中...</span>
+            </div>
+            <div>
+                <button onclick="manualRefresh()" class="btn" id="manualRefreshBtn">🔄 手动刷新</button>
+                <button onclick="toggleAutoRefresh()" class="btn" id="autoRefreshBtn">⏸️ 关闭自动刷新</button>
+                <select id="refreshInterval" onchange="changeRefreshInterval()" class="btn" style="margin-left: 10px;">
+                    <option value="5000">5秒刷新</option>
+                    <option value="10000" selected>10秒刷新</option>
+                    <option value="15000">15秒刷新</option>
+                    <option value="30000">30秒刷新</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- 合约账户信息 -->
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">合约账户信息</div>
+                    </div>
+                    <div id="accountInfo">
+                        <div class="loading">正在加载账户信息...</div>
+                    </div>
+                </div>
+
+                <!-- 合约余额 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">💰</div>
+                        <div class="card-title">合约余额</div>
+                    </div>
+                    <div id="balances">
+                        <div class="loading">正在加载余额信息...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 合约持仓 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📍</div>
+                    <div class="card-title">合约持仓</div>
+                </div>
+                <div id="positions">
+                    <div class="loading">正在加载持仓信息...</div>
+                </div>
+            </div>
+
+            <!-- 当前挂单 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📋</div>
+                    <div class="card-title">当前挂单</div>
+                </div>
+                <div id="openOrders">
+                    <div class="loading">正在加载挂单信息...</div>
+                </div>
+            </div>
+
+            <!-- 最近交易 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📈</div>
+                    <div class="card-title">最近交易</div>
+                </div>
+                <div id="recentTrades">
+                    <div class="loading">正在加载交易记录...</div>
+                </div>
+            </div>
+
+            <!-- 市场行情 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">合约市场行情</div>
+                </div>
+                <div id="marketTickers">
+                    <div class="loading">正在加载市场数据...</div>
+                </div>
+            </div>
+
+            <!-- 收益历史 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💵</div>
+                    <div class="card-title">收益历史</div>
+                </div>
+                <div id="incomeHistory">
+                    <div class="loading">正在加载收益历史...</div>
+                </div>
+            </div>
+
+            <div class="last-update" id="lastUpdate">
+                最后更新时间: --
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let isAutoRefresh = false;
+
+        // 自动刷新控制变量
+        let refreshInterval;
+        let isRefreshing = false;
+        let refreshCount = 0;
+        const MAX_REFRESH_INTERVAL = 30000; // 最大刷新间隔30秒
+        const MIN_REFRESH_INTERVAL = 5000;  // 最小刷新间隔5秒
+        const NORMAL_REFRESH_INTERVAL = 10000; // 正常刷新间隔10秒
+
+        // 智能刷新函数
+        function smartRefresh() {
+            if (isRefreshing) return;
+            
+            isRefreshing = true;
+            refreshCount++;
+            
+            // 更新状态显示
+            const statusElement = document.querySelector('.status-indicator');
+            if (statusElement) {
+                statusElement.textContent = `刷新中... (${refreshCount})`;
+                statusElement.style.color = '#ffa500';
+            }
+            
+            refreshData().finally(() => {
+                isRefreshing = false;
+                
+                // 更新状态显示
+                if (statusElement) {
+                    const now = new Date();
+                    statusElement.textContent = `最后更新: ${now.toLocaleTimeString()}`;
+                    statusElement.style.color = '#28a745';
+                }
+            });
+        }
+
+        // 启动自动刷新
+        function startAutoRefresh() {
+            // 清除现有的定时器
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            // 根据币安API建议，合约数据可以更频繁刷新
+            refreshInterval = setInterval(smartRefresh, NORMAL_REFRESH_INTERVAL);
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加状态指示器
+            const header = document.querySelector('h1');
+            if (header) {
+                const statusDiv = document.createElement('div');
+                statusDiv.innerHTML = '<small class="status-indicator" style="color: #6c757d;">正在加载...</small>';
+                header.appendChild(statusDiv);
+            }
+            
+            // 初始加载数据
+            smartRefresh();
+            
+            // 启动自动刷新
+            startAutoRefresh();
+            
+            // 页面可见性变化时控制刷新
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    stopAutoRefresh();
+                } else {
+                    smartRefresh();
+                    startAutoRefresh();
+                }
+            });
+        });
+
+        // 刷新所有数据
+        async function refreshData() {
+            updateConnectionStatus('🔄 正在刷新...', 'offline');
+            
+            try {
+                // 并行获取所有数据
+                const [accountInfo, balances, positions, orders, trades, tickers, income] = await Promise.all([
+                    fetchData('/api/account/info'),
+                    fetchData('/api/account/balances'),
+                    fetchData('/api/account/positions'),
+                    fetchData('/api/account/orders'),
+                    fetchData('/api/account/trades'),
+                    fetchData('/api/market/tickers'),
+                    fetchData('/api/account/income')
+                ]);
+
+                // 更新各个部分
+                updateAccountInfo(accountInfo);
+                updateBalances(balances);
+                updatePositions(positions);
+                updateOpenOrders(orders);
+                updateRecentTrades(trades);
+                updateMarketTickers(tickers);
+                updateIncomeHistory(income);
+
+                updateConnectionStatus('✅ 连接正常', 'online');
+                updateLastUpdateTime();
+                
+                return true; // 返回成功状态
+            } catch (error) {
+                console.error('刷新数据失败:', error);
+                updateConnectionStatus('❌ 连接失败', 'offline');
+                throw error; // 重新抛出错误以便上层处理
+            }
+        }
+
+        // 获取数据的通用函数
+        async function fetchData(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || '获取数据失败');
+            }
+            return data.data;
+        }
+
+        // 更新连接状态
+        function updateConnectionStatus(text, status) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = text;
+            statusElement.className = `status ${status}`;
+        }
+
+        // 更新账户信息
+        function updateAccountInfo(data) {
+            const container = document.getElementById('accountInfo');
+            if (!data) {
+                container.innerHTML = '<div class="error">获取账户信息失败</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="info-item">
+                    <span class="info-label">总钱包余额</span>
+                    <span class="info-value">${formatNumber(data.total_wallet_balance, 4)} USDT</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">总未实现盈亏</span>
+                    <span class="info-value ${data.total_unrealized_pnl >= 0 ? 'positive' : 'negative'}">${formatNumber(data.total_unrealized_pnl, 4)} USDT</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">总保证金余额</span>
+                    <span class="info-value">${formatNumber(data.total_margin_balance, 4)} USDT</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">可用余额</span>
+                    <span class="info-value">${formatNumber(data.available_balance, 4)} USDT</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">可交易</span>
+                    <span class="info-value ${data.can_trade ? 'positive' : 'negative'}">${data.can_trade ? '是' : '否'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">可提现</span>
+                    <span class="info-value ${data.can_withdraw ? 'positive' : 'negative'}">${data.can_withdraw ? '是' : '否'}</span>
+                </div>
+            `;
+        }
+
+        // 更新余额信息
+        function updateBalances(data) {
+            const container = document.getElementById('balances');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">暂无余额数据</span></div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(balance => {
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">${balance.asset}</span>
+                        <span class="info-value">
+                            钱包: ${formatNumber(balance.wallet_balance, 4)}<br>
+                            <small class="${balance.unrealized_pnl >= 0 ? 'positive' : 'negative'}">
+                                未实现: ${formatNumber(balance.unrealized_pnl, 4)}
+                            </small>
+                        </span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 数字格式化函数
+        function formatNumber(value, decimals = 4) {
+            if (value === null || value === undefined || value === '') return '--';
+            const num = parseFloat(value);
+            if (isNaN(num)) return '--';
+            return num.toFixed(decimals);
+        }
+
+        // 更新持仓信息
+        function updatePositions(data) {
+            const container = document.getElementById('positions');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">当前无持仓</span></div>';
+                return;
+            }
+
+            let html = '<div class="table-container"><table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>交易对</th>
+                        <th>持仓数量</th>
+                        <th>入场价格</th>
+                        <th>标记价格</th>
+                        <th>未实现盈亏</th>
+                        <th>收益率</th>
+                        <th>持仓方向</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            data.forEach(position => {
+                const unrealizedPnl = formatNumber(position.unrealized_pnl, 4);
+                const percentage = formatNumber(position.percentage, 2);
+                const entryPrice = formatNumber(position.entry_price, 4);
+                const markPrice = formatNumber(position.mark_price, 4);
+                const positionAmt = formatNumber(position.position_amt, 6);
+                
+                html += `
+                    <tr>
+                        <td><strong>${position.symbol}</strong></td>
+                        <td>${positionAmt}</td>
+                        <td>${entryPrice}</td>
+                        <td>${markPrice}</td>
+                        <td class="${position.unrealized_pnl >= 0 ? 'positive' : 'negative'}">
+                            ${unrealizedPnl}
+                        </td>
+                        <td class="${position.percentage >= 0 ? 'positive' : 'negative'}">
+                            ${percentage}%
+                        </td>
+                        <td>${position.position_side}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // 更新挂单信息
+        function updateOpenOrders(data) {
+            const container = document.getElementById('openOrders');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">当前无挂单</span></div>';
+                return;
+            }
+
+            let html = '<div class="table-container"><table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>交易对</th>
+                        <th>方向</th>
+                        <th>类型</th>
+                        <th>数量</th>
+                        <th>价格</th>
+                        <th>状态</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            data.forEach(order => {
+                html += `
+                    <tr>
+                        <td><strong>${order.symbol}</strong></td>
+                        <td class="${order.side === 'BUY' ? 'positive' : 'negative'}">${order.side}</td>
+                        <td>${order.type}</td>
+                        <td>${order.quantity}</td>
+                        <td>${order.price}</td>
+                        <td>${order.status}</td>
+                        <td>${order.time}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // 更新交易记录
+        function updateRecentTrades(data) {
+            const container = document.getElementById('recentTrades');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">暂无交易记录</span></div>';
+                return;
+            }
+
+            let html = '<div class="table-container"><table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>交易对</th>
+                        <th>方向</th>
+                        <th>数量</th>
+                        <th>价格</th>
+                        <th>已实现盈亏</th>
+                        <th>手续费</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            data.forEach(trade => {
+                html += `
+                    <tr>
+                        <td><strong>${trade.symbol}</strong></td>
+                        <td class="${trade.side === 'BUY' ? 'positive' : 'negative'}">${trade.side}</td>
+                        <td>${formatNumber(trade.quantity, 6)}</td>
+                        <td>${formatNumber(trade.price, 4)}</td>
+                        <td class="${trade.realized_pnl >= 0 ? 'positive' : 'negative'}">
+                            ${formatNumber(trade.realized_pnl, 4)}
+                        </td>
+                        <td>${formatNumber(trade.commission, 6)} ${trade.commission_asset}</td>
+                        <td>${trade.time}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // 更新市场行情
+        function updateMarketTickers(data) {
+            const container = document.getElementById('marketTickers');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">暂无行情数据</span></div>';
+                return;
+            }
+
+            let html = '<div class="table-container"><table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>交易对</th>
+                        <th>最新价格</th>
+                        <th>24h涨跌</th>
+                        <th>24h涨跌幅</th>
+                        <th>24h最高</th>
+                        <th>24h最低</th>
+                        <th>24h成交量</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            data.forEach(ticker => {
+                html += `
+                    <tr>
+                        <td><strong>${ticker.symbol}</strong></td>
+                        <td>${formatNumber(ticker.price, 4)}</td>
+                        <td class="${ticker.price_change >= 0 ? 'positive' : 'negative'}">
+                            ${formatNumber(ticker.price_change, 4)}
+                        </td>
+                        <td class="${ticker.price_change_percent >= 0 ? 'positive' : 'negative'}">
+                            ${formatNumber(ticker.price_change_percent, 2)}%
+                        </td>
+                        <td>${formatNumber(ticker.high_price, 4)}</td>
+                        <td>${formatNumber(ticker.low_price, 4)}</td>
+                        <td>${formatNumber(ticker.volume, 0)}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // 更新收益历史
+        function updateIncomeHistory(data) {
+            const container = document.getElementById('incomeHistory');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="info-item"><span class="info-label">暂无收益记录</span></div>';
+                return;
+            }
+
+            let html = '<div class="table-container"><table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>交易对</th>
+                        <th>收益类型</th>
+                        <th>收益金额</th>
+                        <th>资产</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            data.forEach(income => {
+                html += `
+                    <tr>
+                        <td><strong>${income.symbol || '--'}</strong></td>
+                        <td>${income.income_type}</td>
+                        <td class="${income.income >= 0 ? 'positive' : 'negative'}">
+                            ${formatNumber(income.income, 6)}
+                        </td>
+                        <td>${income.asset}</td>
+                        <td>${income.time}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // 手动刷新函数
+        function manualRefresh() {
+            const btn = document.getElementById('manualRefreshBtn');
+            const originalText = btn.textContent;
+            
+            btn.textContent = '🔄 刷新中...';
+            btn.disabled = true;
+            
+            refreshData().finally(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            
+            if (isAutoRefresh) {
+                stopAutoRefresh();
+                isAutoRefresh = false;
+                btn.textContent = '⏰ 开启自动刷新';
+                btn.className = 'btn';
+            } else {
+                startAutoRefresh();
+                isAutoRefresh = true;
+                btn.textContent = '⏸️ 关闭自动刷新';
+                btn.className = 'btn btn-danger';
+            }
+        }
+
+        // 改变刷新间隔
+        function changeRefreshInterval() {
+            const select = document.getElementById('refreshInterval');
+            const newInterval = parseInt(select.value);
+            
+            if (isAutoRefresh) {
+                stopAutoRefresh();
+                refreshInterval = setInterval(smartRefresh, newInterval);
+            }
+        }
+
+        // 更新最后更新时间
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN');
+            document.getElementById('lastUpdate').textContent = `最后更新时间: ${timeString}`;
+            
+            // 同时更新状态指示器
+            const statusElement = document.querySelector('.status-indicator');
+            if (statusElement && !isRefreshing) {
+                statusElement.textContent = `最后更新: ${now.toLocaleTimeString()}`;
+                statusElement.style.color = '#28a745';
+            }
+        }
+    </script>
+</body>
+</html>
