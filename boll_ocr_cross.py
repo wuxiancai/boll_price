@@ -28,7 +28,7 @@ RESOLUTION_SCREENSHOT_CONFIG = {
 WEBSOCKET_HOST = "localhost"
 WEBSOCKET_PORT = 8080
 connected_clients: Set[websockets.WebSocketServerProtocol] = set()
-latest_boll_data = {"UP": 0, "MB": 0, "DN": 0, "timestamp": ""}
+latest_boll_data = {"UP": "--", "MB": "--", "DN": "--", "timestamp": ""}
 
 def check_screen_recording_permission():
     """
@@ -626,7 +626,7 @@ def broadcast_boll_data_sync(boll_data):
     Args:
         boll_data: 包含UP、MB、DN的BOLL数据字典
     """
-    if "error" in boll_data:
+    if "error" in boll_data or boll_data.get('UP') == '--' or boll_data.get('MB') == '--' or boll_data.get('DN') == '--':
         return
     
     # 在新的事件循环中运行异步广播函数
@@ -764,16 +764,16 @@ def main():
             print("📷 识别结果:", result)
             
             # 通过WebSocket广播BOLL数据
-            if "error" not in result:
+            if "error" not in result and result.get('UP') != '--' and result.get('MB') != '--' and result.get('DN') != '--':
                 broadcast_boll_data_sync(result)
                 # 打印广播出去的BOLL值
                 print(f"📡 \033[34m广播结果: {{'UP': {result['UP']}, 'MB': {result['MB']}, 'DN': {result['DN']}}}\033[0m")
             else:
-                print(f"⚠️ 识别出错，跳过WebSocket广播: {result}")
+                print(f"⚠️ 识别出错或数据无效，跳过WebSocket广播: {result}")
             
         except Exception as ocr_error:
             print(f"❌ OCR处理失败: {ocr_error}")
-            result = {'UP': 0, 'MB': 0, 'DN': 0}  # 使用默认值
+            result = {'UP': '--', 'MB': '--', 'DN': '--'}  # 使用安全的默认值，避免误触发交易
 
         # 每 1 秒执行一次
         time.sleep(1)
